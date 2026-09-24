@@ -1,0 +1,693 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>手的功能：拿取物品 - 視障學生互動學習遊戲</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700;900&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Noto Sans TC', sans-serif;
+            user-select: none;
+            touch-action: none;
+            overflow: hidden;
+        }
+
+        /* High contrast glowing effects for low-vision support */
+        .glow-target {
+            box-shadow: 0 0 25px 8px rgba(250, 204, 21, 0.95), inset 0 0 15px rgba(250, 204, 21, 0.5);
+            animation: pulse-glow 2s infinite ease-in-out;
+        }
+
+        @keyframes pulse-glow {
+            0%, 100% { box-shadow: 0 0 25px 8px rgba(250, 204, 21, 0.95), inset 0 0 15px rgba(250, 204, 21, 0.5); }
+            50% { box-shadow: 0 0 40px 15px rgba(250, 204, 21, 1), inset 0 0 25px rgba(250, 204, 21, 0.8); }
+        }
+
+        .object-outline {
+            filter: drop-shadow(0px 0px 8px #ffffff) drop-shadow(0px 0px 15px #facc15);
+        }
+
+        .hand-cursor-glow {
+            filter: drop-shadow(0px 0px 12px #38bdf8) drop-shadow(0px 0px 20px #ffffff);
+        }
+
+        /* High Contrast mode utility classes */
+        .high-contrast-mode {
+            background-color: #000000 !important;
+            color: #ffff00 !important;
+        }
+
+        /* Custom scrollbars */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #1e293b;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #eab308;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body class="bg-slate-900 text-white min-h-screen flex flex-col justify-between overflow-hidden">
+
+    <!-- Setup & Pre-game Settings Screen -->
+    <div id="settings-modal" class="fixed inset-0 z-50 bg-slate-950/95 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto">
+        <div class="bg-slate-900 border-4 border-yellow-400 rounded-3xl max-w-2xl w-full p-6 sm:p-8 shadow-2xl space-y-6">
+            <div class="text-center border-b-2 border-slate-700 pb-4">
+                <h1 class="text-3xl sm:text-4xl font-black text-yellow-400 tracking-wide flex items-center justify-center gap-3">
+                    <span>🖐️</span> 學習手的功能：拿取物品
+                </h1>
+                <p class="text-slate-300 text-lg mt-2 font-bold">專為視障學生設計的感官互動教學遊戲</p>
+            </div>
+
+            <!-- Parameters Controls Grid -->
+            <div class="space-y-5 text-left">
+                <!-- Learning Goal Card -->
+                <div class="bg-blue-950/80 border-2 border-blue-400 rounded-2xl p-4 text-blue-100">
+                    <h2 class="font-bold text-xl text-yellow-300 mb-1 flex items-center gap-2">
+                        🎯 本課學習目標：
+                    </h2>
+                    <p class="text-lg leading-relaxed font-medium">
+                        學習「手可以做甚麼」，認識手的核心功能：<strong class="text-yellow-400 underline">「拿取與移動物品」</strong>。學生透過移動手部光標觸碰並把左側的可樂移送到右側餐廳餐桌上。
+                    </p>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <!-- Target Intersection Count -->
+                    <div class="bg-slate-800 p-4 rounded-2xl border border-slate-700">
+                        <label for="intersection-count" class="block text-yellow-300 font-bold text-lg mb-2">
+                            🤝 需接觸推動次數：<span id="count-val" class="text-2xl text-white underline">5</span> 次
+                        </label>
+                        <input type="range" id="intersection-count" min="1" max="10" value="5" class="w-full h-3 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-yellow-400">
+                        <p class="text-xs text-slate-400 mt-1">手觸碰可樂需累積移動的總次數</p>
+                    </div>
+
+                    <!-- Sec of Intersection (Cooldown/Interval) -->
+                    <div class="bg-slate-800 p-4 rounded-2xl border border-slate-700">
+                        <label for="intersection-sec" class="block text-yellow-300 font-bold text-lg mb-2">
+                            ⏱️ 每次觸碰間隔 (Sec)：<span id="sec-val" class="text-2xl text-white underline">1.0</span> 秒
+                        </label>
+                        <input type="range" id="intersection-sec" min="0.3" max="3.0" step="0.1" value="1.0" class="w-full h-3 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-yellow-400">
+                        <p class="text-xs text-slate-400 mt-1">防止手部震顫的有效判定間隔時間</p>
+                    </div>
+
+                    <!-- Object Size Slider -->
+                    <div class="bg-slate-800 p-4 rounded-2xl border border-slate-700">
+                        <label for="object-scale" class="block text-yellow-300 font-bold text-lg mb-2">
+                            🔍 物件放大倍率：<span id="scale-val" class="text-2xl text-white underline">140</span>%
+                        </label>
+                        <input type="range" id="object-scale" min="100" max="220" step="10" value="140" class="w-full h-3 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-yellow-400">
+                        <p class="text-xs text-slate-400 mt-1">放大可樂與手部光標以利低視力觀看</p>
+                    </div>
+
+                    <!-- Audio Spatial Hints Toggle -->
+                    <div class="bg-slate-800 p-4 rounded-2xl border border-slate-700 flex flex-col justify-between">
+                        <span class="text-yellow-300 font-bold text-lg mb-1">🔊 聲音輔助與音效</span>
+                        <div class="flex items-center gap-3 mt-2">
+                            <input type="checkbox" id="spatial-sound" checked class="w-6 h-6 text-yellow-400 rounded focus:ring-yellow-400">
+                            <label for="spatial-sound" class="text-slate-200 font-medium text-base">啟用可樂位置立體聲定位提示</label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Custom MP3 Voice Upload Button -->
+                <div class="bg-slate-800 p-4 rounded-2xl border border-slate-700">
+                    <label class="block text-yellow-300 font-bold text-lg mb-2">
+                        🎙️ 自訂背景語音 / 讚賞音訊檔 (.mp3) Upload:
+                    </label>
+                    <div class="flex flex-col sm:flex-row items-center gap-3">
+                        <input type="file" id="mp3-upload" accept="audio/mp3, audio/*" class="hidden">
+                        <button type="button" onclick="document.getElementById('mp3-upload').click()" class="w-full sm:w-auto bg-slate-700 hover:bg-slate-600 text-yellow-300 px-4 py-3 rounded-xl border border-yellow-400/50 font-bold text-base flex items-center justify-center gap-2 transition">
+                            📁 選擇 MP3 語音檔
+                        </button>
+                        <span id="upload-filename" class="text-slate-400 text-sm italic truncate max-w-xs">未上傳檔 (預設採用系統語音導覽)</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Start Game Button -->
+            <button id="start-game-btn" class="w-full bg-yellow-400 hover:bg-yellow-300 text-slate-950 font-black text-2xl py-4 rounded-2xl shadow-xl transition transform active:scale-98 flex items-center justify-center gap-3">
+                <span>🚀</span> 開始體驗學習 (Start Game)
+            </button>
+        </div>
+    </div>
+
+    <!-- Top Header Bar -->
+    <header class="bg-slate-950/90 border-b-2 border-yellow-400/80 px-4 py-3 flex items-center justify-between z-20">
+        <div class="flex items-center gap-3">
+            <span class="text-3xl">🖐️</span>
+            <div>
+                <h1 class="text-xl sm:text-2xl font-black text-yellow-400">學習手的功能：拿取與移動</h1>
+                <p class="text-xs sm:text-sm text-slate-300">請移動「手」來碰觸可樂，把可樂移到右邊的餐桌上！</p>
+            </div>
+        </div>
+
+        <div class="flex items-center gap-2">
+            <!-- Location Audio Cue Button -->
+            <button id="sound-location-btn" class="bg-blue-600 hover:bg-blue-500 text-white font-bold px-3 py-2 rounded-xl border border-blue-300 text-sm flex items-center gap-1 shadow-md transition">
+                <span>🔔</span> 聽可樂位置
+            </button>
+            <!-- Settings Modal Trigger -->
+            <button id="reconfig-btn" class="bg-slate-800 hover:bg-slate-700 text-yellow-300 font-bold px-3 py-2 rounded-xl border border-yellow-400/40 text-sm flex items-center gap-1 transition">
+                <span>⚙️</span> 遊戲設定
+            </button>
+        </div>
+    </header>
+
+    <!-- Game Main Stage Container -->
+    <main id="game-stage" class="relative flex-1 w-full h-full overflow-hidden bg-slate-900">
+        
+        <!-- Restaurant Background Graphic & Atmosphere Overlay -->
+        <div class="absolute inset-0 z-0">
+            <!-- Simulated High Quality Restaurant Terrace SVG Graphic matching uploaded restaurant.jpg -->
+            <svg class="w-full h-full object-cover" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid slice" viewBox="0 0 1200 700">
+                <defs>
+                    <linearGradient id="skyGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                        <stop offset="0%" stop-color="#38bdf8" />
+                        <stop offset="60%" stop-color="#bae6fd" />
+                        <stop offset="100%" stop-color="#e0f2fe" />
+                    </linearGradient>
+                    <linearGradient id="waterGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                        <stop offset="0%" stop-color="#0284c7" />
+                        <stop offset="100%" stop-color="#0369a1" />
+                    </linearGradient>
+                    <linearGradient id="deckGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                        <stop offset="0%" stop-color="#475569" />
+                        <stop offset="100%" stop-color="#1e293b" />
+                    </linearGradient>
+                </defs>
+                <!-- Sky and Water -->
+                <rect width="1200" height="350" fill="url(#skyGrad)" />
+                <rect y="280" width="1200" height="150" fill="url(#waterGrad)" />
+                <!-- Waterfront City Silhouette -->
+                <path d="M0 280 L1200 280 L1200 290 L0 290 Z" fill="#0f172a" opacity="0.3" />
+                <!-- Outdoor Deck Floor -->
+                <polygon points="0,400 1200,400 1200,700 0,700" fill="url(#deckGrad)" />
+                <!-- Deck Tiles Perspective Lines -->
+                <path d="M200 400 L0 700 M400 400 L300 700 M600 400 L600 700 M800 400 L900 700 M1000 400 L1200 700" stroke="#334155" stroke-width="3" />
+                <!-- Canopy Beams Ceiling -->
+                <rect y="0" width="1200" height="70" fill="#f8fafc" opacity="0.85" />
+                <path d="M0 70 L1200 70 M100 0 L100 70 M300 0 L300 70 M500 0 L500 70 M700 0 L700 70 M900 0 L900 70 M1100 0 L1100 70" stroke="#94a3b8" stroke-width="8" />
+                <!-- Pillars -->
+                <rect x="50" y="70" width="30" height="330" fill="#cbd5e1" />
+                <rect x="1120" y="70" width="30" height="330" fill="#cbd5e1" />
+            </svg>
+            <!-- Contrast Darkener Overlay for Low-Vision Accessibility -->
+            <div class="absolute inset-0 bg-slate-950/40 backdrop-brightness-90"></div>
+        </div>
+
+        <!-- Target Dining Table (Right Side Objective Zone) -->
+        <div id="target-table" class="absolute right-[4%] bottom-[12%] w-[28%] min-w-[220px] max-w-[360px] h-[40%] min-h-[220px] z-10 flex flex-col items-center justify-start rounded-3xl border-8 border-yellow-400 bg-amber-900/80 backdrop-blur-sm p-4 text-center glow-target">
+            <div class="w-full bg-amber-800 border-b-4 border-amber-600 rounded-xl py-2 mb-2 shadow-inner">
+                <span class="text-yellow-300 font-black text-xl sm:text-2xl tracking-wider block">🍽️ 目的地：餐桌</span>
+                <span class="text-white text-xs sm:text-sm font-bold block">把可樂放在這裡！</span>
+            </div>
+            <!-- Visual Dish/Plate Graphic -->
+            <div class="flex-1 w-full flex items-center justify-center">
+                <div class="w-3/4 h-24 sm:h-32 rounded-full border-4 border-white/80 bg-slate-100/30 flex items-center justify-center shadow-2xl">
+                    <span class="text-slate-200 text-sm sm:text-base font-bold bg-slate-900/80 px-3 py-1 rounded-full border border-yellow-400">
+                        放餐桌上 🎯
+                    </span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Can of Cola Interactive Object (cola.jpg replica rendering) -->
+        <div id="cola-object" class="absolute z-20 cursor-pointer transition-all duration-300 ease-out flex flex-col items-center select-none" style="left: 8%; bottom: 20%; width: 130px; height: 210px;">
+            <!-- Outer Accessibility Target Highlighting Frame -->
+            <div class="relative w-full h-full object-outline flex flex-col items-center justify-center">
+                
+                <!-- SVG High Contrast Can of Cola Artwork based on uploaded cola.jpg -->
+                <svg class="w-full h-full drop-shadow-2xl" viewBox="0 0 140 220" xmlns="http://www.w3.org/2000/svg">
+                    <defs>
+                        <linearGradient id="canBody" x1="0%" y1="0%" x2="100%" y2="0%">
+                            <stop offset="0%" stop-color="#b91c1c" />
+                            <stop offset="35%" stop-color="#ef4444" />
+                            <stop offset="70%" stop-color="#dc2626" />
+                            <stop offset="100%" stop-color="#991b1b" />
+                        </linearGradient>
+                        <linearGradient id="silverCap" x1="0%" y1="0%" x2="100%" y2="0%">
+                            <stop offset="0%" stop-color="#94a3b8" />
+                            <stop offset="50%" stop-color="#f8fafc" />
+                            <stop offset="100%" stop-color="#64748b" />
+                        </linearGradient>
+                    </defs>
+                    <!-- Can Top Rim -->
+                    <ellipse cx="70" cy="20" rx="55" ry="14" fill="url(#silverCap)" stroke="#ffffff" stroke-width="3" />
+                    <ellipse cx="70" cy="20" rx="42" ry="9" fill="#cbd5e1" />
+                    <rect x="62" y="15" width="16" height="8" rx="3" fill="#e2e8f0" stroke="#475569" stroke-width="1.5" />
+                    <!-- Can Main Red Body -->
+                    <path d="M15 20 L125 20 C128 70 128 150 125 200 L15 200 C12 150 12 70 15 20 Z" fill="url(#canBody)" stroke="#ffffff" stroke-width="4" />
+                    <!-- White Dynamic Ribbon Wave Logo -->
+                    <path d="M20 130 Q 60 70, 120 120 Q 80 160, 20 130 Z" fill="#ffffff" opacity="0.95" />
+                    <!-- High Contrast Text Label -->
+                    <text x="70" y="105" text-anchor="middle" fill="#ffffff" font-family="'Noto Sans TC', sans-serif" font-weight="900" font-size="28" letter-spacing="2">可樂</text>
+                    <text x="70" y="165" text-anchor="middle" fill="#ffffff" font-family="sans-serif" font-weight="bold" font-size="16" opacity="0.9">COLA</text>
+                    <!-- Bottom Metal Rim -->
+                    <ellipse cx="70" cy="200" rx="55" ry="12" fill="url(#silverCap)" stroke="#ffffff" stroke-width="3" />
+                </svg>
+
+                <!-- High Contrast Indicator Label below object -->
+                <div class="mt-2 bg-yellow-400 text-slate-950 text-xs sm:text-sm font-black px-2 py-0.5 rounded-md border-2 border-slate-950 whitespace-nowrap shadow-lg">
+                    🥤 可樂罐
+                </div>
+            </div>
+        </div>
+
+        <!-- Custom Hand Cursor Follower (手.jpg style graphic) -->
+        <div id="hand-cursor" class="absolute z-30 pointer-events-none hand-cursor-glow transition-transform duration-75 ease-out" style="top: 50%; left: 50%; width: 120px; height: 180px; transform: translate(-50%, -50%);">
+            <!-- High Quality SVG Hand Icon representing user cursor -->
+            <svg class="w-full h-full drop-shadow-2xl" viewBox="0 0 120 180" xmlns="http://www.w3.org/2000/svg">
+                <defs>
+                    <linearGradient id="handSkin" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" stop-color="#ffedd5" />
+                        <stop offset="60%" stop-color="#fed7aa" />
+                        <stop offset="100%" stop-color="#fdba74" />
+                    </linearGradient>
+                </defs>
+                <!-- Hand Wrist and Palm Silhouette -->
+                <g fill="url(#handSkin)" stroke="#451a03" stroke-width="5" stroke-linejoin="round" stroke-linecap="round">
+                    <!-- Wrist -->
+                    <path d="M40 170 L80 170 L85 130 L35 130 Z" />
+                    <!-- Palm -->
+                    <path d="M25 130 C20 90, 30 75, 40 75 L80 75 C95 75, 100 95, 95 130 Z" />
+                    <!-- Fingers (Thumb, Index, Middle, Ring, Pinky) -->
+                    <!-- Thumb -->
+                    <path d="M25 110 C10 100, 5 80, 20 70 C30 65, 35 80, 35 95 Z" />
+                    <!-- Index Finger -->
+                    <path d="M35 75 C32 30, 48 20, 50 20 C55 20, 58 30, 52 75 Z" />
+                    <!-- Middle Finger -->
+                    <path d="M52 75 C50 10, 68 5, 70 5 C75 5, 78 15, 70 75 Z" />
+                    <!-- Ring Finger -->
+                    <path d="M70 75 C70 25, 85 20, 87 20 C92 20, 93 30, 85 75 Z" />
+                    <!-- Pinky -->
+                    <path d="M85 85 C87 45, 98 42, 100 45 C103 48, 100 60, 93 90 Z" />
+                </g>
+                <!-- High Contrast Outer Outline Ring for Vision Impairment -->
+                <circle cx="60" cy="70" r="50" fill="none" stroke="#38bdf8" stroke-width="4" stroke-dasharray="8 6" />
+            </svg>
+            <div class="absolute -bottom-4 left-1/2 -translate-x-1/2 bg-sky-400 text-slate-950 text-xs font-black px-2 py-0.5 rounded-full border border-white whitespace-nowrap shadow-md">
+                🖐️ 手 (你的光標)
+            </div>
+        </div>
+
+        <!-- Touch/Click Tap Assist Banner for Mobile/Accessibility -->
+        <div class="absolute bottom-4 left-4 z-20 bg-slate-950/80 border-2 border-yellow-400 rounded-2xl p-3 max-w-sm text-yellow-300 font-bold text-sm sm:text-base backdrop-blur-sm">
+            💡 提示：按住滑鼠或在螢幕上滑動「手」來碰觸「可樂」，把可樂向右推到餐桌！
+        </div>
+
+        <!-- Intersection Progress Counter Widget -->
+        <div class="absolute top-4 left-4 z-20 bg-slate-950/90 border-4 border-yellow-400 rounded-2xl px-5 py-3 shadow-2xl flex items-center gap-4">
+            <span class="text-3xl sm:text-4xl">📊</span>
+            <div>
+                <div class="text-xs text-slate-300 font-bold uppercase tracking-wider">推送進度 (Progress)</div>
+                <div class="text-2xl sm:text-3xl font-black text-yellow-400">
+                    已碰撞：<span id="progress-count" class="text-white underline">0</span> / <span id="total-count">5</span> 次
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Victory & Learning Objective Praise Modal -->
+    <div id="victory-modal" class="hidden fixed inset-0 z-50 bg-slate-950/95 backdrop-blur-lg flex items-center justify-center p-4 overflow-y-auto">
+        <div class="bg-slate-900 border-8 border-yellow-400 rounded-3xl max-w-2xl w-full p-6 sm:p-10 shadow-2xl text-center space-y-6 transform animate-bounce-short">
+            
+            <div class="text-6xl sm:text-7xl">🎉 👏 🥤</div>
+
+            <h2 class="text-3xl sm:text-5xl font-black text-yellow-400 tracking-wide">
+                好棒！你做到了！
+            </h2>
+
+            <div class="bg-amber-950/80 border-4 border-amber-400 rounded-2xl p-6 text-left space-y-3">
+                <h3 class="text-2xl font-black text-yellow-300 flex items-center gap-2">
+                    💡 學習總結（認識手的功能）：
+                </h3>
+                <p class="text-xl sm:text-2xl text-white font-bold leading-relaxed">
+                    你剛才用<span class="text-yellow-400 underline font-black">「手」</span>成功把左邊的可樂拿取並送到右邊的餐桌上了！
+                </p>
+                <div class="bg-slate-900/90 border-2 border-yellow-400/60 p-4 rounded-xl text-yellow-200 text-lg sm:text-xl font-bold">
+                    🖐️ 手的功能非常厲害：<br>
+                    可以幫我們 <strong class="text-white underline">「拿取物品」</strong>、<strong class="text-white underline">「移動東西」</strong> 和 <strong class="text-white underline">「傳遞食物」</strong> 喔！
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="flex flex-col sm:flex-row gap-4">
+                <button id="replay-btn" class="flex-1 bg-yellow-400 hover:bg-yellow-300 text-slate-950 font-black text-2xl py-4 rounded-2xl shadow-xl transition transform active:scale-95">
+                    🔄 再玩一次 (Play Again)
+                </button>
+                <button id="modal-reconfig-btn" class="flex-1 bg-slate-800 hover:bg-slate-700 text-yellow-300 border-2 border-yellow-400 font-bold text-xl py-4 rounded-2xl shadow-xl transition">
+                    ⚙️ 調整參數 (Settings)
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript Logic -->
+    <script>
+        // Game State Variables
+        let maxIntersections = 5;
+        let secIntersection = 1.0; // Cooldown in seconds
+        let objectScalePercent = 140;
+        let spatialSoundEnabled = true;
+
+        let currentProgress = 0;
+        let isGameActive = false;
+        let lastIntersectionTime = 0;
+        let uploadedAudioUrl = null;
+
+        // DOM Element References
+        const settingsModal = document.getElementById('settings-modal');
+        const victoryModal = document.getElementById('victory-modal');
+        const startGameBtn = document.getElementById('start-game-btn');
+        const replayBtn = document.getElementById('replay-btn');
+        const reconfigBtn = document.getElementById('reconfig-btn');
+        const modalReconfigBtn = document.getElementById('modal-reconfig-btn');
+        const soundLocationBtn = document.getElementById('sound-location-btn');
+        const mp3UploadInput = document.getElementById('mp3-upload');
+        const uploadFilename = document.getElementById('upload-filename');
+
+        const colaObject = document.getElementById('cola-object');
+        const handCursor = document.getElementById('hand-cursor');
+        const gameStage = document.getElementById('game-stage');
+        const targetTable = document.getElementById('target-table');
+
+        const progressCountEl = document.getElementById('progress-count');
+        const totalCountEl = document.getElementById('total-count');
+
+        // Range Sliders
+        const countInput = document.getElementById('intersection-count');
+        const secInput = document.getElementById('intersection-sec');
+        const scaleInput = document.getElementById('object-scale');
+        const spatialCheckbox = document.getElementById('spatial-sound');
+
+        // Web Audio Synthesizer Setup for sound hints and feedback
+        let audioCtx = null;
+
+        function initAudioContext() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+        }
+
+        // Web Audio Sound Generators
+        function playCollisionSound() {
+            initAudioContext();
+            if (!audioCtx) return;
+
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+
+            // Rising pitch sound effect to indicate moving closer to right side
+            const progressRatio = currentProgress / maxIntersections;
+            const baseFreq = 320 + (progressRatio * 400);
+
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(baseFreq, audioCtx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(baseFreq * 1.5, audioCtx.currentTime + 0.15);
+
+            gain.gain.setValueAtTime(0.4, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.2);
+
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.22);
+        }
+
+        function playVictorySound() {
+            initAudioContext();
+            if (!audioCtx) return;
+
+            const notes = [261.63, 329.63, 392.00, 523.25, 659.25]; // C E G C E fanfare
+            notes.forEach((freq, idx) => {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+
+                osc.type = 'sine';
+                osc.frequency.value = freq;
+
+                const startTime = audioCtx.currentTime + (idx * 0.12);
+                gain.gain.setValueAtTime(0.3, startTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, startTime + 0.4);
+
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+
+                osc.start(startTime);
+                osc.stop(startTime + 0.45);
+            });
+        }
+
+        // Spatial Audio Beacon to locate the cola object on screen
+        function playLocationHintSound() {
+            initAudioContext();
+            if (!audioCtx) return;
+
+            const colaRect = colaObject.getBoundingClientRect();
+            const stageRect = gameStage.getBoundingClientRect();
+            const xPercent = (colaRect.left + colaRect.width / 2 - stageRect.left) / stageRect.width;
+
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            const panner = audioCtx.createStereoPanner ? audioCtx.createStereoPanner() : null;
+
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(440, audioCtx.currentTime); // A4 beep
+
+            if (panner) {
+                // Pan value from -1 (full left) to +1 (full right)
+                const panVal = (xPercent * 2) - 1;
+                panner.pan.setValueAtTime(panVal, audioCtx.currentTime);
+                osc.connect(panner);
+                panner.connect(gain);
+            } else {
+                osc.connect(gain);
+            }
+
+            gain.connect(audioCtx.destination);
+
+            gain.gain.setValueAtTime(0.5, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
+
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.35);
+        }
+
+        // Speech Praise Narration
+        function speakPraiseText(text) {
+            // First check if custom MP3 audio is uploaded
+            if (uploadedAudioUrl) {
+                const customAudio = new Audio(uploadedAudioUrl);
+                customAudio.play().catch(e => console.log('Audio play error:', e));
+                return;
+            }
+
+            // Fallback to Web Speech API
+            if ('speechSynthesis' in window) {
+                window.speechSynthesis.cancel(); // Stop ongoing speech
+                const utterance = new SpeechSynthesisUtterance(text);
+                utterance.lang = 'zh-HK'; // Traditional Chinese / Cantonese default
+                utterance.rate = 0.9; // Slightly slower speed for visual impairment clarity
+                utterance.pitch = 1.1;
+                window.speechSynthesis.speak(utterance);
+            }
+        }
+
+        // Settings Inputs Sync
+        countInput.addEventListener('input', (e) => {
+            document.getElementById('count-val').innerText = e.target.value;
+        });
+        secInput.addEventListener('input', (e) => {
+            document.getElementById('sec-val').innerText = parseFloat(e.target.value).toFixed(1);
+        });
+        scaleInput.addEventListener('input', (e) => {
+            document.getElementById('scale-val').innerText = e.target.value;
+        });
+
+        // Handle MP3 Upload
+        mp3UploadInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                uploadedAudioUrl = URL.createObjectURL(file);
+                uploadFilename.innerText = `已載入: ${file.name}`;
+                uploadFilename.classList.remove('text-slate-400');
+                uploadFilename.classList.add('text-yellow-400', 'font-bold');
+            }
+        });
+
+        // Start Game Init
+        function applySettingsAndStart() {
+            maxIntersections = parseInt(countInput.value);
+            secIntersection = parseFloat(secInput.value);
+            objectScalePercent = parseInt(scaleInput.value);
+            spatialSoundEnabled = spatialCheckbox.checked;
+
+            totalCountEl.innerText = maxIntersections;
+            currentProgress = 0;
+            progressCountEl.innerText = currentProgress;
+
+            // Apply Scale Transforms to game elements
+            const scaleFactor = objectScalePercent / 100;
+            colaObject.style.transform = `scale(${scaleFactor})`;
+            handCursor.style.transform = `translate(-50%, -50%) scale(${scaleFactor * 0.9})`;
+
+            // Reset positions
+            resetColaPosition();
+
+            settingsModal.classList.add('hidden');
+            victoryModal.classList.add('hidden');
+            isGameActive = true;
+
+            // Sound prompt for starting
+            speakPraiseText("遊戲開始！請用手把可樂放到餐桌上。");
+        }
+
+        // Calculate positions
+        function resetColaPosition() {
+            colaObject.style.left = '8%';
+            colaObject.style.bottom = '20%';
+        }
+
+        // Hand Cursor Follow Mouse / Touch
+        function updateHandPosition(clientX, clientY) {
+            const stageRect = gameStage.getBoundingClientRect();
+            let x = clientX - stageRect.left;
+            let y = clientY - stageRect.top;
+
+            // Clamp within screen bounds
+            x = Math.max(20, Math.min(stageRect.width - 20, x));
+            y = Math.max(20, Math.min(stageRect.height - 20, y));
+
+            handCursor.style.left = `${x}px`;
+            handCursor.style.top = `${y}px`;
+
+            if (isGameActive) {
+                checkIntersection();
+            }
+        }
+
+        // Pointer event listeners
+        window.addEventListener('mousemove', (e) => {
+            updateHandPosition(e.clientX, e.clientY);
+        });
+
+        window.addEventListener('touchmove', (e) => {
+            if (e.touches.length > 0) {
+                updateHandPosition(e.touches[0].clientX, e.touches[0].clientY);
+            }
+        }, { passive: true });
+
+        window.addEventListener('touchstart', (e) => {
+            if (e.touches.length > 0) {
+                updateHandPosition(e.touches[0].clientX, e.touches[0].clientY);
+            }
+        }, { passive: true });
+
+        // Intersection / Collision Detection
+        function checkIntersection() {
+            const now = Date.now();
+            const cooldownMs = secIntersection * 1000;
+
+            if (now - lastIntersectionTime < cooldownMs) {
+                return; // Respect "sec of intersection" cooldown to avoid unintended multi-hits
+            }
+
+            const handRect = handCursor.getBoundingClientRect();
+            const colaRect = colaObject.getBoundingClientRect();
+
+            // AABB Collision check
+            const isIntersecting = !(
+                handRect.right < colaRect.left ||
+                handRect.left > colaRect.right ||
+                handRect.bottom < colaRect.top ||
+                handRect.top > colaRect.bottom
+            );
+
+            if (isIntersecting) {
+                lastIntersectionTime = now;
+                handleSuccessfulIntersection();
+            }
+        }
+
+        // Push Cola Rightward Action
+        function handleSuccessfulIntersection() {
+            currentProgress++;
+            progressCountEl.innerText = currentProgress;
+
+            // Play SFX
+            playCollisionSound();
+
+            // Calculate new position towards target table
+            const startLeftPercent = 8;
+            const targetLeftPercent = 68; // Table location
+            const distancePerStep = (targetLeftPercent - startLeftPercent) / maxIntersections;
+
+            const newLeft = startLeftPercent + (distancePerStep * currentProgress);
+            colaObject.style.left = `${newLeft}%`;
+
+            // Visual feedback bounce
+            colaObject.classList.add('scale-110');
+            setTimeout(() => {
+                colaObject.classList.remove('scale-110');
+            }, 150);
+
+            // Optional spatial sound hint
+            if (spatialSoundEnabled) {
+                playLocationHintSound();
+            }
+
+            // Check Victory Condition
+            if (currentProgress >= maxIntersections) {
+                triggerVictory();
+            }
+        }
+
+        // Victory Condition Trigger
+        function triggerVictory() {
+            isGameActive = false;
+
+            // Play Fanfare & Show Modal
+            setTimeout(() => {
+                playVictorySound();
+                victoryModal.classList.remove('hidden');
+
+                // Speak Praise and Educational Objective
+                const praiseMessage = "好棒！你做到了！你用手成功把可樂拿取並送到餐桌上了。手的功能非常厲害，可以幫我們拿取物品和移動東西！";
+                speakPraiseText(praiseMessage);
+            }, 300);
+        }
+
+        // UI Event Listeners
+        startGameBtn.addEventListener('click', applySettingsAndStart);
+        replayBtn.addEventListener('click', applySettingsAndStart);
+
+        reconfigBtn.addEventListener('click', () => {
+            isGameActive = false;
+            settingsModal.classList.remove('hidden');
+        });
+
+        modalReconfigBtn.addEventListener('click', () => {
+            victoryModal.classList.add('hidden');
+            settingsModal.classList.remove('hidden');
+        });
+
+        soundLocationBtn.addEventListener('click', () => {
+            playLocationHintSound();
+        });
+
+        // Initialize stage on load
+        window.addEventListener('load', () => {
+            initAudioContext();
+        });
+    </script>
+</body>
+</html>

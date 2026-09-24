@@ -1,0 +1,1438 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>靈魂之窗：海灘小衛士 (Eye Care & Vision Learning Game)</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&family=Noto+Sans+TC:wght@400;700;900&display=swap');
+
+    body {
+      font-family: 'Noto Sans TC', 'Fredoka', sans-serif;
+      user-select: none;
+      -webkit-user-select: none;
+      overflow: hidden;
+      background-color: #031e30;
+    }
+
+    /* Hide standard cursor in active game canvas area */
+    .game-cursor-hide, .game-cursor-hide * {
+      cursor: none !important;
+    }
+
+    /* Custom range slider styling for low vision accessibility */
+    input[type=range] {
+      accent-color: #0284c7;
+      height: 12px;
+    }
+
+    /* Pulse animation for interactive buttons */
+    @keyframes gentle-pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.04); }
+    }
+    .pulse-btn {
+      animation: gentle-pulse 2.2s infinite ease-in-out;
+    }
+
+    /* High contrast focus ring */
+    *:focus-visible {
+      outline: 4px solid #facc15 !important;
+      outline-offset: 2px;
+    }
+
+    /* Toast popup for quick collection praise */
+    @keyframes toast-slide-down {
+      0% { transform: translate(-50%, -100%); opacity: 0; }
+      15% { transform: translate(-50%, 0); opacity: 1; }
+      85% { transform: translate(-50%, 0); opacity: 1; }
+      100% { transform: translate(-50%, -100%); opacity: 0; }
+    }
+    .praise-toast-anim {
+      animation: toast-slide-down 2.2s ease-in-out forwards;
+    }
+  </style>
+</head>
+<body class="bg-slate-900 text-slate-100 h-screen w-screen flex flex-col justify-between overflow-hidden">
+
+  <!-- Top Navigation Header -->
+  <header class="bg-sky-950/90 backdrop-blur border-b-4 border-amber-400 p-3 px-6 flex justify-between items-center z-30 shadow-2xl">
+    <div class="flex items-center gap-3">
+      <div class="bg-gradient-to-br from-amber-300 to-amber-500 text-sky-950 p-2.5 rounded-2xl shadow-lg text-2xl font-black">
+        <i class="fa-solid font-bold fa-eye"></i>
+      </div>
+      <div>
+        <h1 class="text-xl md:text-2xl font-black text-amber-300 tracking-wide drop-shadow-md">靈魂之窗：海灘小衛士</h1>
+        <p class="text-xs md:text-sm text-sky-200 font-bold">視力輔助學習遊戲：眼睛的功能與保護</p>
+      </div>
+    </div>
+
+    <!-- Quick Stats & Control Buttons -->
+    <div class="flex items-center gap-3">
+      <div id="gameStats" class="hidden bg-sky-950/90 border-2 border-sky-400/80 px-4 py-1.5 rounded-2xl flex items-center gap-4 text-base font-bold shadow-inner">
+        <span class="text-amber-300"><i class="fa-solid fa-trash-can mr-1"></i> 已清理: <span id="trashCollectedCount" class="text-white text-xl">0</span>/<span id="totalTrashCount">5</span></span>
+        <span class="text-emerald-400"><i class="fa-solid fa-clock mr-1"></i> <span id="timeDisplay">00:00</span></span>
+      </div>
+
+      <button id="btnAudioToggle" class="bg-sky-900 hover:bg-sky-800 text-white font-bold px-3 py-2 rounded-xl border-2 border-sky-400 flex items-center gap-2 text-sm transition shadow">
+        <i id="audioIcon" class="fa-solid fa-volume-high text-amber-300 text-lg"></i>
+        <span class="hidden md:inline">提示音效</span>
+      </button>
+
+      <button id="btnSettingsModal" class="bg-amber-500 hover:bg-amber-400 text-sky-950 font-black px-4 py-2 rounded-xl border-2 border-amber-200 flex items-center gap-2 text-sm shadow transition">
+        <i class="fa-solid fa-gear"></i>
+        <span>設定</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Main View Area (Canvas + Overlay Modals) -->
+  <main class="relative flex-1 w-full h-full overflow-hidden bg-sky-950">
+    <!-- Game Canvas -->
+    <canvas id="gameCanvas" class="w-full h-full block"></canvas>
+
+    <!-- Quick Praise Floating Toast Banner -->
+    <div id="praiseToast" class="hidden absolute top-6 left-1/2 -translate-x-1/2 z-50 pointer-events-none praise-toast-anim">
+      <div class="bg-gradient-to-r from-amber-400 to-amber-300 text-sky-950 font-black px-6 py-3 rounded-full border-4 border-white shadow-2xl flex items-center gap-3 text-lg md:text-xl">
+        <i class="fa-solid fa-star text-amber-800 text-2xl animate-spin"></i>
+        <span id="toastText">真棒！你用眼睛找到了垃圾！</span>
+      </div>
+    </div>
+
+    <!-- Pre-game Settings Screen / Modal -->
+    <div id="settingsPanel" class="absolute inset-0 bg-sky-950/85 backdrop-blur-md z-40 flex items-center justify-center p-4 overflow-y-auto">
+      <div class="bg-slate-800/95 border-4 border-amber-400 rounded-3xl p-6 md:p-8 max-w-2xl w-full shadow-2xl space-y-6 text-slate-100 my-auto">
+        
+        <div class="border-b-2 border-slate-700 pb-4 text-center">
+          <h2 class="text-2xl md:text-3xl font-black text-amber-300 flex items-center justify-center gap-3">
+            <i class="fa-solid fa-sliders text-amber-400"></i> 視覺輔助與遊戲設定
+          </h2>
+          <p class="text-sm text-sky-200 mt-1">請依照學生的視力與學習需求，設定最適宜的參數</p>
+        </div>
+
+        <!-- 1. Object Size Selection -->
+        <div class="space-y-2 bg-slate-900/70 p-4 rounded-2xl border border-slate-700">
+          <label class="font-bold text-amber-300 text-base md:text-lg flex justify-between items-center">
+            <span><i class="fa-solid fa-expand text-sky-400 mr-2"></i> 1. 海灘垃圾物件大小 (Object Size):</span>
+            <span id="objectSizeLabel" class="text-sky-300 font-extrabold text-lg">特大 (230%)</span>
+          </label>
+          <div class="grid grid-cols-4 gap-2 pt-2">
+            <button type="button" data-size="1" class="btn-size-opt py-2 px-3 rounded-xl border-2 font-bold text-center border-slate-600 bg-slate-800 text-slate-300 hover:border-amber-400">標準 (100%)</button>
+            <button type="button" data-size="1.4" class="btn-size-opt py-2 px-3 rounded-xl border-2 font-bold text-center border-slate-600 bg-slate-800 text-slate-300 hover:border-amber-400">中等 (140%)</button>
+            <button type="button" data-size="1.8" class="btn-size-opt py-2 px-3 rounded-xl border-2 font-bold text-center border-slate-600 bg-slate-800 text-slate-300 hover:border-amber-400">大 (180%)</button>
+            <button type="button" data-size="2.3" class="btn-size-opt active py-2 px-3 rounded-xl border-2 font-bold text-center border-amber-400 bg-amber-500 text-sky-950 font-black shadow">特大 (230%)</button>
+          </div>
+        </div>
+
+        <!-- 2. Intersection Dwell Seconds -->
+        <div class="space-y-2 bg-slate-900/70 p-4 rounded-2xl border border-slate-700">
+          <label class="font-bold text-amber-300 text-base md:text-lg flex justify-between items-center">
+            <span><i class="fa-solid fa-stopwatch text-sky-400 mr-2"></i> 2. 眼睛凝視/停留觸發時間 (Dwell Seconds):</span>
+            <span id="dwellTimeVal" class="text-amber-300 font-extrabold text-lg">1.5 秒</span>
+          </label>
+          <input type="range" id="dwellTimeSlider" min="0.5" max="3.0" step="0.5" value="1.5" class="w-full bg-slate-700 rounded-lg cursor-pointer">
+          <div class="flex justify-between text-xs text-slate-400 font-bold px-1">
+            <span>0.5秒 (快速)</span>
+            <span>1.5秒 (推薦)</span>
+            <span>3.0秒 (穩定)</span>
+          </div>
+        </div>
+
+        <!-- 3. MP3 Custom Audio Upload -->
+        <div class="space-y-2 bg-slate-900/70 p-4 rounded-2xl border border-slate-700">
+          <label class="font-bold text-amber-300 text-base md:text-lg flex items-center justify-between">
+            <span><i class="fa-solid fa-music text-sky-400 mr-2"></i> 3. 上傳自訂 MP3 背景語音 / 音樂:</span>
+            <span id="uploadStatus" class="text-xs font-bold text-slate-400">使用內建溫馨背景聲</span>
+          </label>
+          <div class="flex items-center gap-3 pt-1">
+            <input type="file" id="mp3Uploader" accept="audio/mp3,audio/*" class="hidden">
+            <button type="button" id="btnTriggerUpload" class="bg-sky-700 hover:bg-sky-600 text-white font-bold py-2 px-4 rounded-xl border-2 border-sky-400 flex items-center gap-2 text-sm transition">
+              <i class="fa-solid fa-file-arrow-up text-amber-300"></i>
+              <span>選擇 MP3 語音/音樂檔</span>
+            </button>
+            <button type="button" id="btnClearCustomAudio" class="hidden bg-slate-700 hover:bg-slate-600 text-slate-300 font-bold py-2 px-3 rounded-xl text-sm">
+              <i class="fa-solid fa-xmark"></i> 清除
+            </button>
+          </div>
+        </div>
+
+        <!-- 4. Audio Hints Settings -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div class="bg-slate-900/70 p-3 px-4 rounded-2xl border border-slate-700 flex items-center justify-between">
+            <span class="font-bold text-sm text-slate-200"><i class="fa-solid fa-bullhorn text-sky-400 mr-2"></i> 接近物件聲音提示 (Proximity Pitch)</span>
+            <input type="checkbox" id="chkProximityAudio" checked class="w-5 h-5 accent-amber-400 cursor-pointer">
+          </div>
+          <div class="bg-slate-900/70 p-3 px-4 rounded-2xl border border-slate-700 flex items-center justify-between">
+            <span class="font-bold text-sm text-slate-200"><i class="fa-solid fa-comment-dots text-sky-400 mr-2"></i> 語音朗讀學習點 (TTS Reader)</span>
+            <input type="checkbox" id="chkTTS" checked class="w-5 h-5 accent-amber-400 cursor-pointer">
+          </div>
+        </div>
+
+        <!-- Action Button -->
+        <div class="pt-2 text-center">
+          <button id="btnStartGame" class="pulse-btn w-full md:w-3/4 bg-amber-400 hover:bg-amber-300 text-sky-950 font-black text-xl py-4 rounded-2xl border-4 border-amber-200 shadow-xl transition transform active:scale-95 flex items-center justify-center gap-3">
+            <i class="fa-solid fa-play text-2xl"></i>
+            <span>開始海灘眼睛探索之旅！</span>
+          </button>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Praise & Eye Function Knowledge Modal -->
+    <div id="praiseModal" class="hidden absolute inset-0 bg-sky-950/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
+      <div class="bg-gradient-to-b from-sky-900 to-slate-900 border-4 border-amber-400 rounded-3xl p-6 md:p-8 max-w-xl w-full shadow-2xl text-center space-y-6 animate-bounce-short">
+        <div class="mx-auto w-24 h-24 bg-amber-400 rounded-full border-4 border-white flex items-center justify-center shadow-lg text-sky-950 text-5xl">
+          <i id="praiseIcon" class="fa-solid fa-eye"></i>
+        </div>
+        <div>
+          <h3 id="praiseTitle" class="text-2xl md:text-3xl font-black text-amber-300">真棒！你用眼睛找到了垃圾！</h3>
+          <p id="praiseSubtitle" class="text-sky-200 text-base md:text-lg font-bold mt-2">垃圾已順利飛入清潔小助手的垃圾袋中囉！</p>
+        </div>
+        <button id="btnNextItem" class="pulse-btn w-full bg-emerald-500 hover:bg-emerald-400 text-sky-950 font-black text-xl py-3.5 rounded-2xl border-2 border-emerald-200 shadow-lg flex items-center justify-center gap-3 transition">
+          <span>繼續探索下一個垃圾</span>
+          <i class="fa-solid fa-arrow-right"></i>
+        </button>
+      </div>
+    </div>
+
+    <!-- Final Game Victory Modal -->
+    <div id="victoryModal" class="hidden absolute inset-0 bg-sky-950/90 backdrop-blur-lg z-50 flex items-center justify-center p-4">
+      <div class="bg-slate-800 border-4 border-amber-400 rounded-3xl p-8 max-w-2xl w-full shadow-2xl text-center space-y-6">
+        <div class="text-6xl text-amber-400 animate-pulse">
+          <i class="fa-solid fa-trophy"></i>
+        </div>
+        <h2 class="text-3xl font-black text-amber-300">太棒了！5個垃圾全部清理乾淨了！</h2>
+        
+        <div class="bg-slate-900/80 p-5 rounded-2xl border-2 border-sky-400 text-left space-y-4">
+          <h4 class="text-xl font-black text-amber-300 flex items-center gap-2 border-b border-slate-700 pb-2">
+            <i class="fa-solid fa-camera text-2xl text-amber-400"></i> 眼睛的功能 (Function of Our Eyes)
+          </h4>
+          <ul class="space-y-3 text-base text-slate-100 font-bold">
+            <li class="flex items-start gap-3"><i class="fa-solid fa-circle-check text-emerald-400 text-xl mt-0.5"></i> <span>眼睛就像我們身體的<b>照相機</b>，幫我們<b>看見周圍的事物</b>。</span></li>
+            <li class="flex items-start gap-3"><i class="fa-solid fa-circle-check text-emerald-400 text-xl mt-0.5"></i> <span>眼睛能幫我們<b>分辨顏色</b>（例如透明壓扁水瓶與鮮黃香蕉皮）。</span></li>
+            <li class="flex items-start gap-3"><i class="fa-solid fa-circle-check text-emerald-400 text-xl mt-0.5"></i> <span>眼睛能幫我們<b>判斷遠近</b>與物體的位置細節。</span></li>
+            <li class="flex items-start gap-3 bg-amber-950/50 p-3 rounded-xl border border-amber-500/50"><i class="fa-solid fa-heart text-amber-400 text-xl mt-0.5"></i> <span class="text-amber-200">請記得：保持良好用眼習慣，定期休息，好好保護我們的靈魂之窗！</span></li>
+          </ul>
+        </div>
+
+        <button id="btnRestartGame" class="w-full bg-amber-400 hover:bg-amber-300 text-sky-950 font-black text-xl py-4 rounded-2xl border-2 border-amber-200 shadow-xl transition">
+          <i class="fa-solid fa-rotate-right mr-2"></i> 再玩一次 (Play Again)
+        </button>
+      </div>
+    </div>
+
+  </main>
+
+  <script>
+    /* =========================================================================
+     *  AUDIO SYNTHESIZER & SOUND HINTS ENGINE (Web Audio API)
+     * ========================================================================= */
+    class SoundEngine {
+      constructor() {
+        this.ctx = null;
+        this.bgAudio = new Audio();
+        this.bgAudio.loop = true;
+        this.customAudioLoaded = false;
+        this.enabled = true;
+        this.proximityBeepCooldown = 0;
+      }
+
+      init() {
+        if (!this.ctx) {
+          const AudioContext = window.AudioContext || window.webkitAudioContext;
+          this.ctx = new AudioContext();
+        }
+        if (this.ctx.state === 'suspended') {
+          this.ctx.resume();
+        }
+      }
+
+      playDwellTick(progress) {
+        if (!this.enabled || !this.ctx) return;
+        try {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'sine';
+          osc.frequency.value = 450 + (progress * 650);
+          gain.gain.setValueAtTime(0.08, this.ctx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.1);
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start();
+          osc.stop(this.ctx.currentTime + 0.1);
+        } catch(e){}
+      }
+
+      playCollectSuccess() {
+        if (!this.enabled || !this.ctx) return;
+        try {
+          const now = this.ctx.currentTime;
+          [523.25, 659.25, 783.99, 1046.50].forEach((freq, idx) => {
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            osc.type = 'triangle';
+            osc.frequency.value = freq;
+            gain.gain.setValueAtTime(0.15, now + idx * 0.08);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.08 + 0.25);
+            osc.connect(gain);
+            gain.connect(this.ctx.destination);
+            osc.start(now + idx * 0.08);
+            osc.stop(now + idx * 0.08 + 0.25);
+          });
+        } catch(e){}
+      }
+
+      playProximityBeep(distanceNormalized) {
+        if (!this.enabled || !this.ctx) return;
+        try {
+          const now = this.ctx.currentTime;
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          
+          const freq = 850 - (distanceNormalized * 520); 
+          const vol = (1 - distanceNormalized) * 0.08;
+
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(freq, now);
+          gain.gain.setValueAtTime(vol, now);
+          gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.08);
+
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start(now);
+          osc.stop(now + 0.08);
+        } catch(e){}
+      }
+
+      playVictoryFanfare() {
+        if (!this.enabled || !this.ctx) return;
+        try {
+          const now = this.ctx.currentTime;
+          const notes = [440, 554.37, 659.25, 880, 880, 880, 1108.73];
+          const times = [0, 0.15, 0.3, 0.45, 0.6, 0.75, 0.9];
+          const durations = [0.12, 0.12, 0.12, 0.12, 0.12, 0.12, 0.6];
+
+          notes.forEach((freq, i) => {
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            osc.type = 'square';
+            osc.frequency.value = freq;
+            gain.gain.setValueAtTime(0.12, now + times[i]);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + times[i] + durations[i]);
+            osc.connect(gain);
+            gain.connect(this.ctx.destination);
+            osc.start(now + times[i]);
+            osc.stop(now + times[i] + durations[i]);
+          });
+        } catch(e){}
+      }
+
+      setCustomBgAudio(file) {
+        const url = URL.createObjectURL(file);
+        this.bgAudio.src = url;
+        this.customAudioLoaded = true;
+      }
+
+      startBgAudio() {
+        if (this.customAudioLoaded && this.enabled) {
+          this.bgAudio.play().catch(() => {});
+        }
+      }
+
+      stopBgAudio() {
+        this.bgAudio.pause();
+      }
+    }
+
+    const sound = new SoundEngine();
+
+    function speakText(text) {
+      const chkTTS = document.getElementById('chkTTS');
+      if (!chkTTS || !chkTTS.checked) return;
+
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+        const utter = new SpeechSynthesisUtterance(text);
+        utter.lang = 'zh-HK';
+        utter.rate = 0.95;
+        utter.pitch = 1.05;
+        window.speechSynthesis.speak(utter);
+      }
+    }
+
+    /* =========================================================================
+     *  PHOTOREALISTIC RUBBISH VECTOR RENDERERS WITH 3D SHADING & LIGHTING
+     * ========================================================================= */
+    const RUBBISH_TEMPLATES = [
+      {
+        id: 'bottle',
+        name: '透明壓扁水瓶',
+        color: '#bae6fd',
+        borderColor: '#0284c7',
+        educationalPoint: '眼睛能幫我們辨別透明塑膠材質與顏色，例如這個帶藍色瓶蓋的壓扁水瓶！',
+        drawShape: function(ctx, scale) {
+          // 1. Realistic Translucent Plastic Crushed Bottle Body
+          ctx.save();
+          
+          // Base path for crushed bottle
+          ctx.beginPath();
+          ctx.moveTo(-7 * scale, -28 * scale);
+          ctx.lineTo(7 * scale, -28 * scale);
+          ctx.lineTo(12 * scale, -18 * scale);
+          ctx.lineTo(19 * scale, -5 * scale);
+          ctx.lineTo(11 * scale, 8 * scale);
+          ctx.lineTo(17 * scale, 22 * scale);
+          ctx.lineTo(12 * scale, 34 * scale);
+          ctx.lineTo(-12 * scale, 34 * scale);
+          ctx.lineTo(-17 * scale, 20 * scale);
+          ctx.lineTo(-11 * scale, 8 * scale);
+          ctx.lineTo(-19 * scale, -5 * scale);
+          ctx.lineTo(-12 * scale, -18 * scale);
+          ctx.closePath();
+
+          // Multi-stop Plastic Glass/PET Linear Gradient Shading
+          const petGrad = ctx.createLinearGradient(-15 * scale, -30 * scale, 15 * scale, 35 * scale);
+          petGrad.addColorStop(0, 'rgba(224, 242, 254, 0.82)');
+          petGrad.addColorStop(0.3, 'rgba(186, 230, 253, 0.45)');
+          petGrad.addColorStop(0.6, 'rgba(125, 211, 252, 0.65)');
+          petGrad.addColorStop(1, 'rgba(224, 242, 254, 0.75)');
+
+          ctx.fillStyle = petGrad;
+          ctx.fill();
+
+          // Outer Refraction Contour
+          ctx.strokeStyle = 'rgba(2, 132, 199, 0.75)';
+          ctx.lineWidth = 1.8 * Math.max(1, scale * 0.6);
+          ctx.stroke();
+
+          // Internal Crinkles & Dynamic Highlights
+          ctx.strokeStyle = 'rgba(255, 255, 255, 0.85)';
+          ctx.lineWidth = 2 * Math.max(1, scale * 0.5);
+          ctx.beginPath();
+          ctx.moveTo(-10 * scale, -20 * scale); ctx.lineTo(-4 * scale, 28 * scale);
+          ctx.moveTo(8 * scale, -12 * scale); ctx.lineTo(12 * scale, 20 * scale);
+          ctx.stroke();
+
+          ctx.strokeStyle = 'rgba(3, 105, 161, 0.5)';
+          ctx.lineWidth = 1.2 * Math.max(1, scale * 0.5);
+          ctx.beginPath();
+          ctx.moveTo(-12 * scale, -8 * scale); ctx.lineTo(8 * scale, -2 * scale);
+          ctx.moveTo(10 * scale, 2 * scale); ctx.lineTo(-10 * scale, 12 * scale);
+          ctx.moveTo(-14 * scale, 18 * scale); ctx.lineTo(8 * scale, 24 * scale);
+          ctx.stroke();
+
+          // Royal Blue Cap with Metallic Ridges
+          const capGrad = ctx.createLinearGradient(-8 * scale, 0, 8 * scale, 0);
+          capGrad.addColorStop(0, '#1d4ed8');
+          capGrad.addColorStop(0.5, '#60a5fa');
+          capGrad.addColorStop(1, '#1e3a8a');
+          
+          ctx.fillStyle = capGrad;
+          ctx.beginPath();
+          ctx.roundRect(-8 * scale, -36 * scale, 16 * scale, 8 * scale, 2);
+          ctx.fill();
+
+          ctx.strokeStyle = '#1e3a8a';
+          ctx.lineWidth = 1.2;
+          ctx.stroke();
+
+          // Cap Ridges
+          ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+          ctx.lineWidth = 1;
+          for(let rx = -6 * scale; rx <= 6 * scale; rx += 3 * scale) {
+            ctx.beginPath();
+            ctx.moveTo(rx, -36 * scale);
+            ctx.lineTo(rx, -28 * scale);
+            ctx.stroke();
+          }
+
+          ctx.restore();
+        }
+      },
+      {
+        id: 'banana',
+        name: '鮮黃香蕉皮',
+        color: '#facc15',
+        borderColor: '#ca8a04',
+        educationalPoint: '眼睛能幫我們辨認鮮豔黃色與有機形狀，找出海灘上的香蕉皮！',
+        drawShape: function(ctx, scale) {
+          ctx.save();
+
+          // Photorealistic Banana Peel Path
+          ctx.beginPath();
+          ctx.moveTo(0, -32 * scale);
+          ctx.quadraticCurveTo(18 * scale, -10 * scale, 34 * scale, 5 * scale);
+          ctx.quadraticCurveTo(20 * scale, 8 * scale, 10 * scale, -8 * scale);
+          ctx.quadraticCurveTo(25 * scale, 25 * scale, 32 * scale, 35 * scale);
+          ctx.quadraticCurveTo(10 * scale, 28 * scale, -2 * scale, 12 * scale);
+          ctx.quadraticCurveTo(-22 * scale, 26 * scale, -35 * scale, 20 * scale);
+          ctx.quadraticCurveTo(-20 * scale, 8 * scale, -6 * scale, -12 * scale);
+          ctx.closePath();
+
+          // Vibrant 3D Organic Radial Peel Gradient
+          const bananaGrad = ctx.createRadialGradient(0, 0, 2 * scale, 0, 0, 35 * scale);
+          bananaGrad.addColorStop(0, '#fef08a');
+          bananaGrad.addColorStop(0.5, '#facc15');
+          bananaGrad.addColorStop(0.85, '#eab308');
+          bananaGrad.addColorStop(1, '#a16207');
+
+          ctx.fillStyle = bananaGrad;
+          ctx.fill();
+
+          ctx.strokeStyle = '#854d0e';
+          ctx.lineWidth = 1.5 * Math.max(1, scale * 0.5);
+          ctx.stroke();
+
+          // Inner Creamy Flesh Texture
+          ctx.fillStyle = '#fef9c3';
+          ctx.beginPath();
+          ctx.ellipse(0, -2 * scale, 6 * scale, 12 * scale, 0.2, 0, Math.PI * 2);
+          ctx.fill();
+
+          // Realistic Brown Decay Age Spots & Fibrous Ribs
+          ctx.fillStyle = '#451a03';
+          [
+            {x: 12 * scale, y: 15 * scale, r: 2 * scale},
+            {x: -15 * scale, y: 8 * scale, r: 2.5 * scale},
+            {x: 22 * scale, y: 25 * scale, r: 1.8 * scale},
+            {x: -2 * scale, y: -22 * scale, r: 2.2 * scale}
+          ].forEach(spot => {
+            ctx.beginPath();
+            ctx.arc(spot.x, spot.y, spot.r, 0, Math.PI * 2);
+            ctx.fill();
+          });
+
+          // Long Rib Highlight Lines
+          ctx.strokeStyle = '#ca8a04';
+          ctx.lineWidth = 1.8 * Math.max(1, scale * 0.5);
+          ctx.beginPath();
+          ctx.moveTo(0, -28 * scale); ctx.quadraticCurveTo(12 * scale, -5 * scale, 28 * scale, 30 * scale);
+          ctx.moveTo(0, -28 * scale); ctx.quadraticCurveTo(-12 * scale, -2 * scale, -28 * scale, 18 * scale);
+          ctx.stroke();
+
+          // Dark Stem Tip
+          ctx.fillStyle = '#3f2305';
+          ctx.beginPath();
+          ctx.arc(0, -31 * scale, 3.5 * scale, 0, Math.PI * 2);
+          ctx.fill();
+
+          ctx.restore();
+        }
+      },
+      {
+        id: 'paper',
+        name: '皺皺廢紙團',
+        color: '#f8fafc',
+        borderColor: '#64748b',
+        educationalPoint: '眼睛能幫我們判斷立體皺褶與影調，輕鬆找出這顆廢紙團。',
+        drawShape: function(ctx, scale) {
+          ctx.save();
+
+          // Photorealistic 3D Crumpled Polygon Facets
+          const nodes = [
+            {x: -16, y: -22}, {x: -4, y: -27}, {x: 14, y: -24},
+            {x: 25, y: -10}, {x: 27, y: 8}, {x: 18, y: 24},
+            {x: -2, y: 27}, {x: -22, y: 19}, {x: -26, y: -4}
+          ];
+
+          // Base Shape
+          ctx.beginPath();
+          ctx.moveTo(nodes[0].x * scale, nodes[0].y * scale);
+          for(let i=1; i<nodes.length; i++) {
+            ctx.lineTo(nodes[i].x * scale, nodes[i].y * scale);
+          }
+          ctx.closePath();
+
+          ctx.fillStyle = '#f8fafc';
+          ctx.fill();
+          ctx.strokeStyle = '#94a3b8';
+          ctx.lineWidth = 1.5 * Math.max(1, scale * 0.5);
+          ctx.stroke();
+
+          // Shaded Inner Triangular Facets (Simulating 3D Paper Folds)
+          const center = {x: 2 * scale, y: -2 * scale};
+          const facetShades = [
+            'rgba(203, 213, 225, 0.65)',
+            'rgba(241, 245, 249, 0.9)',
+            'rgba(148, 163, 184, 0.55)',
+            'rgba(226, 232, 240, 0.8)',
+            'rgba(100, 116, 139, 0.45)',
+            'rgba(248, 250, 252, 0.95)',
+            'rgba(148, 163, 184, 0.6)',
+            'rgba(203, 213, 225, 0.5)'
+          ];
+
+          for(let i = 0; i < nodes.length - 1; i++) {
+            ctx.fillStyle = facetShades[i % facetShades.length];
+            ctx.beginPath();
+            ctx.moveTo(center.x, center.y);
+            ctx.lineTo(nodes[i].x * scale, nodes[i].y * scale);
+            ctx.lineTo(nodes[i+1].x * scale, nodes[i+1].y * scale);
+            ctx.closePath();
+            ctx.fill();
+            
+            ctx.strokeStyle = 'rgba(100, 116, 139, 0.4)';
+            ctx.lineWidth = 1;
+            ctx.stroke();
+          }
+
+          // Sharp Edge Crease Highlights
+          ctx.strokeStyle = '#ffffff';
+          ctx.lineWidth = 2 * Math.max(1, scale * 0.5);
+          ctx.beginPath();
+          ctx.moveTo(center.x, center.y); ctx.lineTo(nodes[2].x * scale, nodes[2].y * scale);
+          ctx.moveTo(center.x, center.y); ctx.lineTo(nodes[6].x * scale, nodes[6].y * scale);
+          ctx.stroke();
+
+          ctx.restore();
+        }
+      },
+      {
+        id: 'fork',
+        name: '斷齒塑膠叉',
+        color: '#ffffff',
+        borderColor: '#94a3b8',
+        educationalPoint: '眼睛能幫我們觀察到極細微的特徵，例如塑膠叉子斷掉的鋸齒！',
+        drawShape: function(ctx, scale) {
+          ctx.save();
+
+          // Photorealistic Beveled Plastic Fork Body
+          ctx.beginPath();
+          ctx.moveTo(-11 * scale, -32 * scale);
+          ctx.lineTo(-7 * scale, -32 * scale);
+          ctx.lineTo(-6 * scale, -10 * scale);
+          
+          // Snapped Middle Tine
+          ctx.lineTo(-3 * scale, -10 * scale);
+          ctx.lineTo(-3 * scale, -21 * scale); 
+          ctx.lineTo(1 * scale, -21 * scale);
+          ctx.lineTo(1 * scale, -10 * scale);
+
+          // Tine 3 & 4
+          ctx.lineTo(4 * scale, -10 * scale);
+          ctx.lineTo(4 * scale, -32 * scale);
+          ctx.lineTo(8 * scale, -32 * scale);
+          ctx.lineTo(8 * scale, -10 * scale);
+
+          ctx.lineTo(11 * scale, -32 * scale);
+          ctx.lineTo(15 * scale, -32 * scale);
+          ctx.lineTo(12 * scale, 0);
+
+          // Handle Curve
+          ctx.lineTo(5 * scale, 10 * scale);
+          ctx.lineTo(4 * scale, 34 * scale);
+          ctx.lineTo(-4 * scale, 34 * scale);
+          ctx.lineTo(-5 * scale, 10 * scale);
+          ctx.lineTo(-12 * scale, 0);
+          ctx.closePath();
+
+          // Linear Bevel Gloss Gradient
+          const plasticGrad = ctx.createLinearGradient(-15 * scale, 0, 15 * scale, 0);
+          plasticGrad.addColorStop(0, '#e2e8f0');
+          plasticGrad.addColorStop(0.3, '#ffffff');
+          plasticGrad.addColorStop(0.7, '#f1f5f9');
+          plasticGrad.addColorStop(1, '#cbd5e1');
+
+          ctx.fillStyle = plasticGrad;
+          ctx.fill();
+
+          ctx.strokeStyle = '#64748b';
+          ctx.lineWidth = 1.5 * Math.max(1, scale * 0.5);
+          ctx.stroke();
+
+          // Jagged Fractured Edge Detail
+          ctx.fillStyle = '#0f172a';
+          ctx.beginPath();
+          ctx.moveTo(-3 * scale, -21 * scale);
+          ctx.lineTo(-1 * scale, -19 * scale);
+          ctx.lineTo(1 * scale, -21 * scale);
+          ctx.stroke();
+
+          // Specular Ridge Highlight
+          ctx.strokeStyle = '#ffffff';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.moveTo(0, 5 * scale);
+          ctx.lineTo(0, 30 * scale);
+          ctx.stroke();
+
+          // Broken Fragment on Ground nearby
+          ctx.fillStyle = '#ffffff';
+          ctx.strokeStyle = '#64748b';
+          ctx.beginPath();
+          ctx.rect(-1.5 * scale, -32 * scale, 3 * scale, 7 * scale);
+          ctx.fill();
+          ctx.stroke();
+
+          ctx.restore();
+        }
+      },
+      {
+        id: 'can',
+        name: '壓扁紅色鋁罐',
+        color: '#ef4444',
+        borderColor: '#991b1b',
+        educationalPoint: '眼睛幫我們看見金屬光澤與鮮豔紅色，讓海灘恢復乾淨清爽！',
+        drawShape: function(ctx, scale) {
+          ctx.save();
+
+          // Metallic Crushed Soda Can Contour
+          ctx.beginPath();
+          ctx.moveTo(-18 * scale, -20 * scale);
+          ctx.lineTo(18 * scale, -20 * scale);
+          ctx.lineTo(14 * scale, -8 * scale);
+          ctx.lineTo(22 * scale, 0 * scale);
+          ctx.lineTo(12 * scale, 12 * scale);
+          ctx.lineTo(16 * scale, 22 * scale);
+          ctx.lineTo(-16 * scale, 22 * scale);
+          ctx.lineTo(-10 * scale, 8 * scale);
+          ctx.lineTo(-20 * scale, -4 * scale);
+          ctx.closePath();
+
+          // High-Luster Metallic Red Aluminum Gradient
+          const canGrad = ctx.createLinearGradient(-20 * scale, -20 * scale, 20 * scale, 22 * scale);
+          canGrad.addColorStop(0, '#991b1b');
+          canGrad.addColorStop(0.25, '#ef4444');
+          canGrad.addColorStop(0.5, '#fca5a5'); // Metallic sheen
+          canGrad.addColorStop(0.75, '#dc2626');
+          canGrad.addColorStop(1, '#7f1d1d');
+
+          ctx.fillStyle = canGrad;
+          ctx.fill();
+
+          ctx.strokeStyle = '#7f1d1d';
+          ctx.lineWidth = 1.8 * Math.max(1, scale * 0.5);
+          ctx.stroke();
+
+          // Metallic Rim & Pull Tab Detail
+          ctx.fillStyle = '#cbd5e1';
+          ctx.strokeStyle = '#475569';
+          ctx.lineWidth = 1.2;
+          ctx.beginPath();
+          ctx.ellipse(0, -18 * scale, 12 * scale, 3 * scale, 0, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.stroke();
+
+          // Crushed Ridges Shading
+          ctx.strokeStyle = 'rgba(0, 0, 0, 0.4)';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.moveTo(-16 * scale, -5 * scale); ctx.lineTo(12 * scale, 2 * scale);
+          ctx.moveTo(-8 * scale, 8 * scale); ctx.lineTo(14 * scale, 15 * scale);
+          ctx.stroke();
+
+          // Specular Flash Highlight
+          ctx.strokeStyle = 'rgba(255, 255, 255, 0.85)';
+          ctx.lineWidth = 2.5;
+          ctx.beginPath();
+          ctx.moveTo(-10 * scale, -14 * scale); ctx.lineTo(-2 * scale, 18 * scale);
+          ctx.stroke();
+
+          ctx.restore();
+        }
+      }
+    ];
+
+    /* =========================================================================
+     *  MAIN GAME CLASS & ENGINE
+     * ========================================================================= */
+    class EyeBeachGame {
+      constructor() {
+        this.canvas = document.getElementById('gameCanvas');
+        this.ctx = this.canvas.getContext('2d');
+        
+        // Settings State
+        this.scaleMultiplier = 2.3;
+        this.dwellRequiredSec = 1.5;
+        this.proximityAudioEnabled = true;
+
+        // Mouse & Eye Cursor State
+        this.cursor = { x: -100, y: -100, size: 45 };
+        this.isHoveringGame = false;
+
+        // Character State
+        this.character = { x: 0, y: 0, bagX: 0, bagY: 0 };
+
+        // Game State
+        this.items = [];
+        this.collectedCount = 0;
+        this.dwellTimer = 0;
+        this.hoveredItem = null;
+        this.isPlaying = false;
+        this.flyingItems = [];
+        this.lastFrameTime = performance.now();
+
+        // Wave & Sun Effects State
+        this.waveOffset = 0;
+
+        this.initEvents();
+        this.resize();
+      }
+
+      initEvents() {
+        window.addEventListener('resize', () => this.resize());
+
+        const updateCursorPos = (e) => {
+          const rect = this.canvas.getBoundingClientRect();
+          this.cursor.x = e.clientX - rect.left;
+          this.cursor.y = e.clientY - rect.top;
+          this.isHoveringGame = true;
+        };
+
+        this.canvas.addEventListener('mousemove', updateCursorPos);
+        this.canvas.addEventListener('touchmove', (e) => {
+          if (e.touches.length > 0) {
+            updateCursorPos(e.touches[0]);
+          }
+        }, { passive: true });
+
+        this.canvas.addEventListener('mouseleave', () => {
+          this.isHoveringGame = false;
+        });
+
+        // Size Buttons Selection
+        document.querySelectorAll('.btn-size-opt').forEach(btn => {
+          btn.addEventListener('click', (e) => {
+            document.querySelectorAll('.btn-size-opt').forEach(b => {
+              b.classList.remove('active', 'bg-amber-500', 'text-sky-950', 'border-amber-400', 'font-black', 'shadow');
+              b.classList.add('bg-slate-800', 'text-slate-300', 'border-slate-600');
+            });
+            const target = e.currentTarget;
+            target.classList.add('active', 'bg-amber-500', 'text-sky-950', 'border-amber-400', 'font-black', 'shadow');
+            target.classList.remove('bg-slate-800', 'text-slate-300', 'border-slate-600');
+            
+            this.scaleMultiplier = parseFloat(target.getAttribute('data-size'));
+            const labels = { '1': '標準 (100%)', '1.4': '中等 (140%)', '1.8': '大 (180%)', '2.3': '特大 (230%)' };
+            document.getElementById('objectSizeLabel').textContent = labels[target.getAttribute('data-size')] || '自訂';
+          });
+        });
+
+        // Dwell Time Slider
+        const slider = document.getElementById('dwellTimeSlider');
+        slider.addEventListener('input', (e) => {
+          this.dwellRequiredSec = parseFloat(e.target.value);
+          document.getElementById('dwellTimeVal').textContent = `${this.dwellRequiredSec.toFixed(1)} 秒`;
+        });
+
+        // Audio Toggle
+        document.getElementById('btnAudioToggle').addEventListener('click', () => {
+          sound.enabled = !sound.enabled;
+          const icon = document.getElementById('audioIcon');
+          if (sound.enabled) {
+            icon.className = 'fa-solid fa-volume-high text-amber-300 text-lg';
+            sound.startBgAudio();
+          } else {
+            icon.className = 'fa-solid fa-volume-xmark text-slate-400 text-lg';
+            sound.stopBgAudio();
+          }
+        });
+
+        // MP3 Custom Upload
+        document.getElementById('btnTriggerUpload').addEventListener('click', () => {
+          document.getElementById('mp3Uploader').click();
+        });
+
+        document.getElementById('mp3Uploader').addEventListener('change', (e) => {
+          const file = e.target.files[0];
+          if (file) {
+            sound.setCustomBgAudio(file);
+            document.getElementById('uploadStatus').textContent = `已上傳: ${file.name.substring(0, 15)}...`;
+            document.getElementById('uploadStatus').className = 'text-xs font-bold text-amber-400';
+            document.getElementById('btnClearCustomAudio').classList.remove('hidden');
+          }
+        });
+
+        document.getElementById('btnClearCustomAudio').addEventListener('click', () => {
+          sound.customAudioLoaded = false;
+          sound.stopBgAudio();
+          document.getElementById('mp3Uploader').value = '';
+          document.getElementById('uploadStatus').textContent = '使用內建溫馨背景聲';
+          document.getElementById('uploadStatus').className = 'text-xs font-bold text-slate-400';
+          document.getElementById('btnClearCustomAudio').classList.add('hidden');
+        });
+
+        // Settings Modal
+        document.getElementById('btnSettingsModal').addEventListener('click', () => {
+          document.getElementById('settingsPanel').classList.remove('hidden');
+        });
+
+        document.getElementById('btnStartGame').addEventListener('click', () => {
+          sound.init();
+          sound.startBgAudio();
+          this.proximityAudioEnabled = document.getElementById('chkProximityAudio').checked;
+          document.getElementById('settingsPanel').classList.add('hidden');
+          document.getElementById('gameStats').classList.remove('hidden');
+          
+          this.startNewGame();
+        });
+
+        // Praise Modal Next
+        document.getElementById('btnNextItem').addEventListener('click', () => {
+          document.getElementById('praiseModal').classList.add('hidden');
+          this.canvas.classList.add('game-cursor-hide');
+          if (this.collectedCount >= this.items.length) {
+            this.showVictoryScreen();
+          }
+        });
+
+        // Restart Game Button
+        document.getElementById('btnRestartGame').addEventListener('click', () => {
+          document.getElementById('victoryModal').classList.add('hidden');
+          this.startNewGame();
+        });
+      }
+
+      resize() {
+        this.canvas.width = this.canvas.parentElement.clientWidth;
+        this.canvas.height = this.canvas.parentElement.clientHeight;
+
+        this.character.x = this.canvas.width - 120;
+        this.character.y = this.canvas.height - 110;
+        this.character.bagX = this.character.x - 30;
+        this.character.bagY = this.character.y - 10;
+      }
+
+      startNewGame() {
+        this.collectedCount = 0;
+        this.dwellTimer = 0;
+        this.hoveredItem = null;
+        this.flyingItems = [];
+        this.isPlaying = true;
+
+        this.canvas.classList.add('game-cursor-hide');
+        document.getElementById('trashCollectedCount').textContent = '0';
+        document.getElementById('totalTrashCount').textContent = RUBBISH_TEMPLATES.length;
+
+        this.items = [];
+        const margin = 110;
+        const availableWidth = this.canvas.width - margin * 2 - 160;
+        const beachTopY = this.canvas.height * 0.58;
+        const beachBottomY = this.canvas.height - 120;
+
+        RUBBISH_TEMPLATES.forEach((tmpl) => {
+          let posX, posY, collision;
+          let attempts = 0;
+
+          do {
+            collision = false;
+            posX = margin + Math.random() * availableWidth;
+            posY = beachTopY + Math.random() * (beachBottomY - beachTopY);
+
+            for (let existing of this.items) {
+              const dx = existing.x - posX;
+              const dy = existing.y - posY;
+              if (Math.hypot(dx, dy) < 120 * this.scaleMultiplier) {
+                collision = true;
+                break;
+              }
+            }
+            attempts++;
+          } while (collision && attempts < 120);
+
+          this.items.push({
+            ...tmpl,
+            x: posX,
+            y: posY,
+            collected: false,
+            rotation: (Math.random() - 0.5) * 0.85
+          });
+        });
+
+        speakText("請用大眼睛仔細看海灘，移動眼睛找到處處散落的垃圾！");
+      }
+
+      checkIntersection(item, cursorX, cursorY) {
+        const dx = cursorX - item.x;
+        const dy = cursorY - item.y;
+        const dist = Math.hypot(dx, dy);
+        // Generous, accurate hit radius based on item scale for low vision accessibility & gaze tracking
+        const hitRadius = 40 * this.scaleMultiplier;
+        return dist <= hitRadius;
+      }
+
+      update(now) {
+        const dt = (now - this.lastFrameTime) / 1000;
+        this.lastFrameTime = now;
+
+        if (!this.isPlaying) return;
+
+        this.waveOffset += dt * 1.8;
+
+        let currentHover = null;
+        let minDistance = Infinity;
+
+        for (let item of this.items) {
+          if (item.collected) continue;
+
+          const dist = Math.hypot(this.cursor.x - item.x, this.cursor.y - item.y);
+          if (dist < minDistance) minDistance = dist;
+
+          if (this.checkIntersection(item, this.cursor.x, this.cursor.y)) {
+            currentHover = item;
+            break;
+          }
+        }
+
+        // Proximity Audio Feedback
+        if (this.proximityAudioEnabled && minDistance < 400 && !currentHover) {
+          sound.proximityBeepCooldown -= dt;
+          if (sound.proximityBeepCooldown <= 0) {
+            const normDist = Math.max(0, Math.min(1, minDistance / 400));
+            sound.playProximityBeep(normDist);
+            sound.proximityBeepCooldown = 0.15 + normDist * 0.35;
+          }
+        }
+
+        // Dwell Timer Processing
+        if (currentHover) {
+          if (this.hoveredItem === currentHover) {
+            this.dwellTimer += dt;
+            const progress = Math.min(1, this.dwellTimer / this.dwellRequiredSec);
+            
+            if (Math.floor(progress * 10) > Math.floor((progress - dt) * 10)) {
+              sound.playDwellTick(progress);
+            }
+
+            if (this.dwellTimer >= this.dwellRequiredSec) {
+              this.collectItem(currentHover);
+            }
+          } else {
+            this.hoveredItem = currentHover;
+            this.dwellTimer = 0;
+          }
+        } else {
+          this.hoveredItem = null;
+          this.dwellTimer = 0;
+        }
+
+        // Update Parabolic Flying Animations
+        for (let i = this.flyingItems.length - 1; i >= 0; i--) {
+          const fly = this.flyingItems[i];
+          fly.progress += dt * 1.8;
+
+          if (fly.progress >= 1) {
+            this.flyingItems.splice(i, 1);
+            this.triggerPraiseToast(fly.item);
+          } else {
+            const p = fly.progress;
+            fly.currentX = fly.startX + (fly.targetX - fly.startX) * p;
+            const linearY = fly.startY + (fly.targetY - fly.startY) * p;
+            const arcHeight = 140 * Math.sin(p * Math.PI);
+            fly.currentY = linearY - arcHeight;
+            fly.currentScale = (1 - p * 0.6) * this.scaleMultiplier;
+          }
+        }
+      }
+
+      collectItem(item) {
+        item.collected = true;
+        this.hoveredItem = null;
+        this.dwellTimer = 0;
+        this.collectedCount++;
+        
+        sound.playCollectSuccess();
+        document.getElementById('trashCollectedCount').textContent = this.collectedCount;
+
+        this.flyingItems.push({
+          item: item,
+          startX: item.x,
+          startY: item.y,
+          targetX: this.character.bagX,
+          targetY: this.character.bagY,
+          currentX: item.x,
+          currentY: item.y,
+          progress: 0,
+          currentScale: this.scaleMultiplier
+        });
+      }
+
+      triggerPraiseToast(item) {
+        const toast = document.getElementById('praiseToast');
+        const toastText = document.getElementById('toastText');
+        
+        toastText.textContent = `真棒！你用眼睛找到了【${item.name}】！`;
+        
+        toast.classList.remove('hidden', 'praise-toast-anim');
+        void toast.offsetWidth;
+        toast.classList.add('praise-toast-anim');
+
+        speakText(`讚！你用眼睛找到了${item.name}！`);
+
+        if (this.collectedCount >= this.items.length) {
+          setTimeout(() => {
+            this.showVictoryScreen();
+          }, 1500);
+        }
+      }
+
+      showVictoryScreen() {
+        this.isPlaying = false;
+        sound.playVictoryFanfare();
+        this.canvas.classList.remove('game-cursor-hide');
+        document.getElementById('victoryModal').classList.remove('hidden');
+        speakText("太棒了！5個垃圾全部清理乾淨了！眼睛就像我們的照相機，能看見事物、分辨顏色和判斷遠近。我們要保持良好用眼習慣，好好保護眼睛！");
+      }
+
+      render() {
+        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+
+        // 1. Photorealistic Beach Environment
+        this.drawRealisticBeachBackground();
+
+        // 2. Realistic Litter Items with Soft Ground Drop Shadows
+        this.items.forEach(item => {
+          if (!item.collected) {
+            this.drawRealisticItemWithShadow(item);
+          }
+        });
+
+        // 3. Flying Animation Objects
+        this.flyingItems.forEach(fly => {
+          this.drawFlyingItem(fly);
+        });
+
+        // 4. Character & Trash Bag
+        this.drawCharacter();
+
+        // 5. Cute Eye Cursor
+        if (this.isHoveringGame && !document.getElementById('praiseModal').offsetHeight && !document.getElementById('settingsPanel').offsetHeight && !document.getElementById('victoryModal').offsetHeight) {
+          this.drawEyeCursor(this.cursor.x, this.cursor.y);
+        }
+      }
+
+      drawRealisticBeachBackground() {
+        const w = this.canvas.width;
+        const h = this.canvas.height;
+
+        // Sky - Radiant Sunlight & Atmospheric Scattering
+        const skyGrad = this.ctx.createLinearGradient(0, 0, 0, h * 0.48);
+        skyGrad.addColorStop(0, '#0284c7');
+        skyGrad.addColorStop(0.4, '#38bdf8');
+        skyGrad.addColorStop(0.8, '#7dd3fc');
+        skyGrad.addColorStop(1, '#bae6fd');
+        this.ctx.fillStyle = skyGrad;
+        this.ctx.fillRect(0, 0, w, h * 0.48);
+
+        // Sun Flare Radial Rays in Top-Left Sky
+        const sunGrad = this.ctx.createRadialGradient(w * 0.15, h * 0.12, 5, w * 0.15, h * 0.12, 180);
+        sunGrad.addColorStop(0, 'rgba(255, 255, 255, 0.9)');
+        sunGrad.addColorStop(0.3, 'rgba(254, 240, 138, 0.4)');
+        sunGrad.addColorStop(1, 'rgba(255, 255, 255, 0)');
+        this.ctx.fillStyle = sunGrad;
+        this.ctx.fillRect(0, 0, w, h * 0.48);
+
+        // Realistic Volumetric Fluffy Cumulus Clouds
+        const drawRealisticCloud = (cx, cy, scale) => {
+          this.ctx.save();
+          const cloudGrad = this.ctx.createRadialGradient(cx, cy - 10 * scale, 5, cx, cy, 45 * scale);
+          cloudGrad.addColorStop(0, '#ffffff');
+          cloudGrad.addColorStop(0.7, 'rgba(241, 245, 249, 0.95)');
+          cloudGrad.addColorStop(1, 'rgba(203, 213, 225, 0.8)');
+          this.ctx.fillStyle = cloudGrad;
+
+          this.ctx.beginPath();
+          this.ctx.arc(cx, cy, 32 * scale, 0, Math.PI * 2);
+          this.ctx.arc(cx + 25 * scale, cy - 12 * scale, 24 * scale, 0, Math.PI * 2);
+          this.ctx.arc(cx - 28 * scale, cy - 6 * scale, 20 * scale, 0, Math.PI * 2);
+          this.ctx.arc(cx + 48 * scale, cy + 5 * scale, 18 * scale, 0, Math.PI * 2);
+          this.ctx.fill();
+          this.ctx.restore();
+        };
+
+        drawRealisticCloud(w * 0.12, h * 0.2, 1.2);
+        drawRealisticCloud(w * 0.42, h * 0.15, 0.95);
+        drawRealisticCloud(w * 0.82, h * 0.22, 1.1);
+
+        // Multi-Layer Deep Ocean Water & Surface Reflections
+        const oceanGrad = this.ctx.createLinearGradient(0, h * 0.48, 0, h * 0.62);
+        oceanGrad.addColorStop(0, '#0369a1');
+        oceanGrad.addColorStop(0.35, '#0284c7');
+        oceanGrad.addColorStop(0.7, '#06b6d4');
+        oceanGrad.addColorStop(1, '#2dd4bf');
+        this.ctx.fillStyle = oceanGrad;
+        this.ctx.fillRect(0, h * 0.48, w, h * 0.14);
+
+        // Animated Water Waves & Shimmering Foam Lines
+        this.ctx.save();
+        this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.65)';
+        this.ctx.lineWidth = 2.5;
+        for (let row = 0; row < 3; row++) {
+          this.ctx.beginPath();
+          const rowY = h * (0.50 + row * 0.04);
+          for (let x = 0; x <= w; x += 30) {
+            const waveY = rowY + Math.sin((x + this.waveOffset * (50 + row * 20)) * 0.015) * (4 + row);
+            if (x === 0) this.ctx.moveTo(x, waveY);
+            else this.ctx.lineTo(x, waveY);
+          }
+          this.ctx.stroke();
+        }
+        this.ctx.restore();
+
+        // Dynamic Shoreline Waves & Soft Foamy Edge Over Wet Sand
+        const foamY = h * 0.61;
+        this.ctx.fillStyle = 'rgba(255, 255, 255, 0.88)';
+        this.ctx.beginPath();
+        this.ctx.moveTo(0, foamY);
+        for (let x = 0; x <= w; x += 15) {
+          const dy = Math.sin((x + this.waveOffset * 35) * 0.02) * 7;
+          this.ctx.lineTo(x, foamY + dy);
+        }
+        this.ctx.lineTo(w, h);
+        this.ctx.lineTo(0, h);
+        this.ctx.closePath();
+        this.ctx.fill();
+
+        // Realistic Golden Sandy Beach Gradient with Wet Sand Reflection
+        const sandGrad = this.ctx.createLinearGradient(0, h * 0.62, 0, h);
+        sandGrad.addColorStop(0, '#fde68a'); // Wet sand reflect
+        sandGrad.addColorStop(0.12, '#fef08a');
+        sandGrad.addColorStop(0.5, '#fde047');
+        sandGrad.addColorStop(1, '#ca8a04');
+        this.ctx.fillStyle = sandGrad;
+        this.ctx.fillRect(0, h * 0.62, w, h * 0.38);
+
+        // Fine Sand Grains & Dunes Micro Texture Effect
+        this.ctx.fillStyle = 'rgba(180, 83, 9, 0.07)';
+        for (let sx = 0; sx < w; sx += 40) {
+          for (let sy = h * 0.64; sy < h; sy += 30) {
+            this.ctx.beginPath();
+            this.ctx.arc(sx + (sy % 17), sy + (sx % 13), 1.5, 0, Math.PI * 2);
+            this.ctx.fill();
+          }
+        }
+      }
+
+      drawRealisticItemWithShadow(item) {
+        const isHovered = (this.hoveredItem === item);
+
+        this.ctx.save();
+
+        // 1. Realistic Soft Ground Drop Shadow onto Golden Sand
+        this.ctx.save();
+        this.ctx.translate(item.x + 8, item.y + 12);
+        this.ctx.rotate(item.rotation);
+        this.ctx.scale(1, 0.4); // Flattened shadow perspective
+        
+        this.ctx.fillStyle = 'rgba(120, 53, 15, 0.35)'; // Warm realistic sand shadow
+        item.drawShape(this.ctx, this.scaleMultiplier * 1.05);
+        this.ctx.fill();
+        this.ctx.restore();
+
+        // 2. Render Main Litter Item with Glow on Hover
+        this.ctx.translate(item.x, item.y);
+        this.ctx.rotate(item.rotation);
+
+        if (isHovered) {
+          this.ctx.shadowColor = '#facc15';
+          this.ctx.shadowBlur = 25;
+        } else {
+          this.ctx.shadowColor = 'rgba(0, 0, 0, 0.2)';
+          this.ctx.shadowBlur = 8;
+        }
+
+        item.drawShape(this.ctx, this.scaleMultiplier);
+
+        if (isHovered) {
+          this.ctx.strokeStyle = '#facc15';
+          this.ctx.lineWidth = 5;
+          this.ctx.stroke();
+
+          // Visual Progress Countdown Ring around the rubbish item
+          const progress = Math.min(1, this.dwellTimer / this.dwellRequiredSec);
+          const ringRadius = 42 * this.scaleMultiplier;
+          
+          this.ctx.restore(); // Reset rotation transformation for clear circle
+          this.ctx.save();
+          this.ctx.translate(item.x, item.y);
+
+          // Background track ring
+          this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
+          this.ctx.lineWidth = 6;
+          this.ctx.beginPath();
+          this.ctx.arc(0, 0, ringRadius, 0, Math.PI * 2);
+          this.ctx.stroke();
+
+          // Active countdown progress arc
+          this.ctx.strokeStyle = '#facc15';
+          this.ctx.lineWidth = 8;
+          this.ctx.lineCap = 'round';
+          this.ctx.beginPath();
+          this.ctx.arc(0, 0, ringRadius, -Math.PI / 2, -Math.PI / 2 + (progress * Math.PI * 2));
+          this.ctx.stroke();
+        }
+
+        this.ctx.restore();
+      }
+
+      drawFlyingItem(fly) {
+        this.ctx.save();
+        this.ctx.translate(fly.currentX, fly.currentY);
+        this.ctx.shadowColor = 'rgba(0,0,0,0.3)';
+        this.ctx.shadowBlur = 10;
+
+        fly.item.drawShape(this.ctx, fly.currentScale);
+        this.ctx.restore();
+      }
+
+      drawCharacter() {
+        const x = this.character.x;
+        const y = this.character.y;
+
+        this.ctx.save();
+
+        // Ground Ambient Shadow
+        this.ctx.fillStyle = 'rgba(120, 53, 15, 0.3)';
+        this.ctx.beginPath();
+        this.ctx.ellipse(x - 10, y + 45, 50, 15, 0, 0, Math.PI * 2);
+        this.ctx.fill();
+
+        // Rubbish Bag
+        const bagGrad = this.ctx.createRadialGradient(x - 35, y, 5, x - 35, y + 10, 35);
+        bagGrad.addColorStop(0, '#475569');
+        bagGrad.addColorStop(0.7, '#1e293b');
+        bagGrad.addColorStop(1, '#0f172a');
+
+        this.ctx.fillStyle = bagGrad;
+        this.ctx.strokeStyle = '#334155';
+        this.ctx.lineWidth = 3;
+        this.ctx.beginPath();
+        this.ctx.ellipse(x - 35, y + 10, 34, 44, -0.2, 0, Math.PI * 2);
+        this.ctx.fill();
+        this.ctx.stroke();
+
+        // Bag Neck Rim
+        this.ctx.fillStyle = '#64748b';
+        this.ctx.beginPath();
+        this.ctx.ellipse(x - 35, y - 26, 24, 10, 0, 0, Math.PI * 2);
+        this.ctx.fill();
+
+        // Helper Character Body
+        const bodyGrad = this.ctx.createRadialGradient(x, y + 20, 5, x, y + 20, 30);
+        bodyGrad.addColorStop(0, '#38bdf8');
+        bodyGrad.addColorStop(1, '#0284c7');
+        this.ctx.fillStyle = bodyGrad;
+        this.ctx.beginPath();
+        this.ctx.arc(x, y + 20, 28, 0, Math.PI * 2);
+        this.ctx.fill();
+
+        // Head
+        const headGrad = this.ctx.createRadialGradient(x - 5, y - 25, 2, x, y - 20, 25);
+        headGrad.addColorStop(0, '#fef08a');
+        headGrad.addColorStop(1, '#eab308');
+        this.ctx.fillStyle = headGrad;
+        this.ctx.beginPath();
+        this.ctx.arc(x, y - 20, 24, 0, Math.PI * 2);
+        this.ctx.fill();
+
+        // Eyes & Smile
+        this.ctx.fillStyle = '#0f172a';
+        this.ctx.beginPath();
+        this.ctx.arc(x - 8, y - 24, 4, 0, Math.PI * 2);
+        this.ctx.arc(x + 8, y - 24, 4, 0, Math.PI * 2);
+        this.ctx.fill();
+
+        this.ctx.strokeStyle = '#0f172a';
+        this.ctx.lineWidth = 3;
+        this.ctx.beginPath();
+        this.ctx.arc(x, y - 18, 12, 0.1, Math.PI - 0.1);
+        this.ctx.stroke();
+
+        this.ctx.restore();
+      }
+
+      drawEyeCursor(cx, cy) {
+        this.ctx.save();
+
+        const eyeRadius = 30;
+        const pupilRadius = 13;
+
+        let pupilDx = 0;
+        let pupilDy = 0;
+        if (this.hoveredItem) {
+          const angle = Math.atan2(this.hoveredItem.y - cy, this.hoveredItem.x - cx);
+          pupilDx = Math.cos(angle) * 7;
+          pupilDy = Math.sin(angle) * 7;
+        }
+
+        const drawSingleEye = (offsetX) => {
+          const ex = cx + offsetX;
+          const ey = cy - 4;
+
+          // Glassy Sclera Sphere Gradient
+          const scleraGrad = this.ctx.createRadialGradient(ex - 6, ey - 8, 2, ex, ey, eyeRadius);
+          scleraGrad.addColorStop(0, '#ffffff');
+          scleraGrad.addColorStop(0.75, '#f1f5f9');
+          scleraGrad.addColorStop(1, '#cbd5e1');
+
+          this.ctx.fillStyle = scleraGrad;
+          this.ctx.strokeStyle = '#0284c7';
+          this.ctx.lineWidth = 4;
+          this.ctx.shadowColor = 'rgba(0, 0, 0, 0.3)';
+          this.ctx.shadowBlur = 10;
+          this.ctx.beginPath();
+          this.ctx.arc(ex, ey, eyeRadius, 0, Math.PI * 2);
+          this.ctx.fill();
+          this.ctx.stroke();
+
+          // Black Pupil
+          this.ctx.fillStyle = '#0f172a';
+          this.ctx.beginPath();
+          this.ctx.arc(ex + pupilDx, ey + pupilDy, pupilRadius, 0, Math.PI * 2);
+          this.ctx.fill();
+
+          // Catchlight Highlights
+          this.ctx.fillStyle = '#ffffff';
+          this.ctx.beginPath();
+          this.ctx.arc(ex + pupilDx - 4, ey + pupilDy - 4, 4.5, 0, Math.PI * 2);
+          this.ctx.arc(ex + pupilDx + 4, ey + pupilDy + 2, 2.5, 0, Math.PI * 2);
+          this.ctx.arc(ex + pupilDx - 2, ey + pupilDy + 5, 1.8, 0, Math.PI * 2);
+          this.ctx.fill();
+
+          // Eyelashes Curve
+          this.ctx.strokeStyle = '#0f172a';
+          this.ctx.lineWidth = 3.5;
+          this.ctx.beginPath();
+          this.ctx.arc(ex, ey - 6, eyeRadius + 2, Math.PI * 1.15, Math.PI * 1.85);
+          this.ctx.stroke();
+
+          // Pink Blush Cheek
+          this.ctx.fillStyle = '#f472b6';
+          this.ctx.beginPath();
+          this.ctx.ellipse(ex, ey + eyeRadius + 10, 14, 6, 0, 0, Math.PI * 2);
+          this.ctx.fill();
+        };
+
+        drawSingleEye(-24);
+        drawSingleEye(24);
+
+        // Dwell Radial Progress Ring
+        if (this.hoveredItem) {
+          const progress = Math.min(1, this.dwellTimer / this.dwellRequiredSec);
+          
+          this.ctx.lineWidth = 8;
+          this.ctx.strokeStyle = '#facc15';
+          this.ctx.beginPath();
+          this.ctx.arc(cx, cy, eyeRadius + 20, -Math.PI / 2, -Math.PI / 2 + (progress * Math.PI * 2));
+          this.ctx.stroke();
+        }
+
+        this.ctx.restore();
+      }
+
+      loop(timestamp) {
+        this.update(timestamp);
+        this.render();
+        requestAnimationFrame((ts) => this.loop(ts));
+      }
+    }
+
+    window.addEventListener('load', () => {
+      const game = new EyeBeachGame();
+      requestAnimationFrame((ts) => game.loop(ts));
+    });
+  </script>
+</body>
+</html>
