@@ -1,0 +1,1177 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>大胃王比賽 - 嘴巴的功能 (視障學生學習遊戲)</title>
+    <!-- Tailwind CSS for modern high-contrast accessible design -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+HK:wght@500;700;900&display=swap');
+        
+        body {
+            font-family: 'Noto Sans HK', sans-serif;
+            touch-action: manipulation;
+            user-select: none;
+        }
+
+        /* High contrast pulsing animation for accessibility waiter button */
+        @keyframes pulse-border {
+            0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(234, 179, 8, 0.8); }
+            50% { transform: scale(1.04); box-shadow: 0 0 0 18px rgba(234, 179, 8, 0); }
+        }
+
+        .pulse-waiter {
+            animation: pulse-border 1.5s infinite;
+        }
+
+        /* Custom high-contrast accessibility focus ring */
+        .accessible-focus:focus {
+            outline: 6px solid #FACC15 !important;
+            outline-offset: 4px;
+        }
+
+        /* Hide native cursor inside game arena to display animated mouth cursor */
+        .hide-cursor {
+            cursor: none !important;
+        }
+
+        .hide-cursor * {
+            cursor: none !important;
+        }
+    </style>
+</head>
+<body class="bg-slate-950 text-white min-h-screen flex flex-col justify-between overflow-x-hidden">
+
+    <!-- Top Accessible Header & MP3 Narration Controls -->
+    <header class="bg-slate-900 border-b-4 border-yellow-400 p-3 sm:p-4 shadow-xl z-20">
+        <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3">
+            <div class="flex items-center gap-3">
+                <div class="w-12 h-12 bg-yellow-400 rounded-full flex items-center justify-center text-slate-950 font-black text-2xl shadow-lg">
+                    👄
+                </div>
+                <div>
+                    <h1 class="text-xl sm:text-2xl font-black text-yellow-400 tracking-wide">嘴巴的功能：大胃王比賽</h1>
+                    <p class="text-xs sm:text-sm text-slate-300 font-bold">學習目標：嘴巴可以用來「說話打招呼」和「進食」</p>
+                </div>
+            </div>
+
+            <!-- Audio Upload & Accessibility Settings -->
+            <div class="flex flex-wrap items-center gap-2 bg-slate-800 p-2 rounded-xl border border-slate-700">
+                <label for="audioUpload" class="cursor-pointer bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs sm:text-sm px-3 py-2 rounded-lg flex items-center gap-2 transition accessible-focus" title="上載自訂廣東話語音MP3">
+                    <i class="fa-solid fa-file-audio text-lg"></i>
+                    <span>上載語音MP3</span>
+                </label>
+                <input type="file" id="audioUpload" accept="audio/mp3,audio/*" class="hidden">
+                
+                <button id="btnPlayBgAudio" class="hidden bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs px-3 py-2 rounded-lg flex items-center gap-1">
+                    <i class="fa-solid fa-play"></i> <span id="bgAudioName">播放自訂背景音</span>
+                </button>
+                <audio id="customBgAudio" loop></audio>
+
+                <button id="btnOpenSettings" class="bg-slate-700 hover:bg-slate-600 text-white font-bold text-xs sm:text-sm px-3 py-2 rounded-lg flex items-center gap-1 border border-slate-500 accessible-focus">
+                    <i class="fa-solid fa-gear"></i> 無障礙設定
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Game Section -->
+    <main class="flex-1 max-w-7xl w-full mx-auto p-2 sm:p-4 flex flex-col justify-center items-center relative">
+        
+        <!-- Dashboard: Timer, Dish Counter, Progress Bar -->
+        <div class="w-full grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+            <div class="bg-slate-900 border-2 border-yellow-400 rounded-xl p-3 text-center shadow-md">
+                <span class="text-xs text-yellow-300 font-bold block">⏱️ 剩餘時間</span>
+                <span id="timerDisplay" class="text-2xl sm:text-4xl font-black text-yellow-400">02:00</span>
+            </div>
+            <div class="bg-slate-900 border-2 border-emerald-400 rounded-xl p-3 text-center shadow-md">
+                <span class="text-xs text-emerald-300 font-bold block">🍱 已吃食物 (目標 10 碟)</span>
+                <span id="dishCountDisplay" class="text-2xl sm:text-4xl font-black text-emerald-400">0 / 10</span>
+            </div>
+            <div class="bg-slate-900 border-2 border-cyan-400 rounded-xl p-3 text-center shadow-md">
+                <span class="text-xs text-cyan-300 font-bold block">😋 當前這碟進食進度</span>
+                <div class="w-full bg-slate-800 rounded-full h-6 mt-1 border border-cyan-500 overflow-hidden relative">
+                    <div id="progressFill" class="bg-cyan-400 h-full w-0 transition-all duration-200"></div>
+                    <span id="progressText" class="absolute inset-0 flex items-center justify-center text-xs font-black text-white drop-shadow">0% (目標 70%)</span>
+                </div>
+            </div>
+            <div class="bg-slate-900 border-2 border-purple-400 rounded-xl p-3 text-center shadow-md flex items-center justify-center">
+                <button id="btnToggleSound" class="bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs sm:text-sm px-3 py-2 rounded-lg w-full flex items-center justify-center gap-2 accessible-focus">
+                    <i id="soundIcon" class="fa-solid fa-volume-high"></i>
+                    <span id="soundStatusText">聲音: 開啟</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Central Game Arena -->
+        <div id="gameArena" class="relative w-full max-w-4xl min-h-[420px] sm:min-h-[520px] bg-slate-900 border-4 border-slate-700 rounded-2xl flex flex-col md:flex-row items-center justify-between p-4 gap-4 shadow-2xl overflow-hidden hide-cursor">
+            
+            <!-- LEFT SIDE: Waiter Call Button Area (Forces cursor away after 70% food eaten) -->
+            <div class="w-full md:w-1/3 flex flex-col items-center justify-center p-2 z-10">
+                <div id="waiterButtonContainer" class="w-full flex flex-col items-center justify-center hidden">
+                    <button id="btnCallWaiter" class="w-full py-6 sm:py-8 px-4 bg-yellow-400 hover:bg-yellow-300 text-slate-950 font-black text-xl sm:text-2xl rounded-2xl border-4 border-yellow-200 shadow-2xl pulse-waiter flex flex-col items-center gap-2 transition transform hover:scale-105">
+                        <span class="text-4xl sm:text-5xl">🔔</span>
+                        <span>呼叫服務員上菜！</span>
+                        <span class="text-xs bg-slate-950 text-yellow-300 px-3 py-1 rounded-full mt-1">請移動嘴巴到這裡觸發</span>
+                    </button>
+                </div>
+                <div id="waiterHintText" class="text-slate-400 text-sm font-bold text-center mt-2 hidden">
+                    👈 將嘴巴移到左邊按鈕，讓服務員送上下一碟！
+                </div>
+            </div>
+
+            <!-- RIGHT/CENTER SIDE: Interactive Food Plate Canvas -->
+            <div class="w-full md:w-2/3 flex flex-col items-center justify-center relative min-h-[340px]">
+                
+                <!-- Food Title Display Banner -->
+                <div id="foodTitleBanner" class="mb-2 bg-slate-800 text-yellow-300 px-6 py-2 rounded-full border-2 border-yellow-500 font-black text-lg sm:text-2xl shadow-md text-center">
+                    準備好開始比賽！
+                </div>
+
+                <!-- Food Dish Canvas -->
+                <div class="relative flex items-center justify-center">
+                    <canvas id="foodCanvas" width="380" height="380" class="rounded-full shadow-2xl bg-slate-950 border-4 border-amber-500/50"></canvas>
+                    
+                    <!-- Dish Completed Overlay -->
+                    <div id="dishCompleteOverlay" class="absolute inset-0 bg-slate-950/80 rounded-full flex flex-col items-center justify-center text-center hidden p-4 border-4 border-emerald-400">
+                        <span class="text-6xl mb-2">🎉</span>
+                        <span class="text-2xl font-black text-emerald-400">吃光這碟了！</span>
+                        <span class="text-sm font-bold text-white mt-1">請移到左邊按「呼叫服務員」</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Custom Mouth Cursor Follower -->
+            <div id="mouthCursor" class="pointer-events-none fixed z-50 transform -translate-x-1/2 -translate-y-1/2 transition-transform duration-75 text-6xl drop-shadow-[0_10px_10px_rgba(0,0,0,0.8)] hidden">
+                👄
+            </div>
+
+        </div>
+
+        <!-- Start Game Overlay -->
+        <div id="startOverlay" class="absolute inset-0 bg-slate-950/90 rounded-2xl flex flex-col items-center justify-center p-6 text-center z-30">
+            <div class="max-w-xl bg-slate-900 border-4 border-yellow-400 rounded-2xl p-6 sm:p-8 shadow-2xl">
+                <div class="text-6xl sm:text-7xl mb-4">🏆 👄 🍱</div>
+                <h2 class="text-2xl sm:text-3xl font-black text-yellow-400 mb-3">大胃王比賽 - 嘴巴進食體驗</h2>
+                <p class="text-slate-200 text-base sm:text-lg mb-4 font-bold leading-relaxed">
+                    目標：在 <span class="text-yellow-400 font-black">2 分鐘內</span> 吃完 <span class="text-emerald-400 font-black">10 碟美食</span>！<br>
+                    每當吃掉一碟食物的 <span class="text-cyan-400 font-black">70% 份量</span>，左邊會出現服務員按鈕，移過去就能換下一碟！
+                </p>
+                <div class="bg-slate-800 p-4 rounded-xl text-left border border-slate-700 text-xs sm:text-sm text-amber-300 font-bold mb-6">
+                    💡 提示：使用滑鼠或手指控制「嘴巴」，在食物上移動進行咬食。比賽會有廣東話倒數語音提示（1分鐘、30秒、10秒）。
+                </div>
+                <button id="btnStartGame" class="w-full bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xl py-4 rounded-xl shadow-xl border-2 border-emerald-200 transition transform hover:scale-105 accessible-focus">
+                    🚀 開始大胃王比賽！
+                </button>
+            </div>
+        </div>
+
+        <!-- Result Modal with Cantonese Speech Recap -->
+        <div id="resultModal" class="fixed inset-0 bg-slate-950/95 flex items-center justify-center p-4 z-50 hidden">
+            <div class="max-w-2xl w-full bg-slate-900 border-4 border-yellow-400 rounded-2xl p-6 sm:p-8 text-center shadow-2xl relative">
+                <div id="resultIcon" class="text-6xl sm:text-7xl mb-3">🎉</div>
+                <h2 id="resultTitle" class="text-3xl font-black text-yellow-400 mb-2">恭喜你完成比賽！</h2>
+                <p id="resultDesc" class="text-slate-300 text-lg font-bold mb-6"></p>
+
+                <!-- Educational Takeaway Section -->
+                <div class="bg-slate-800 border-2 border-cyan-400 rounded-xl p-5 mb-6 text-left shadow-inner">
+                    <h3 class="text-cyan-400 font-black text-base sm:text-lg mb-2 flex items-center gap-2">
+                        <i class="fa-solid fa-graduation-cap"></i> 學習重點結語：
+                    </h3>
+                    <p id="learningTakeaway" class="text-xl sm:text-2xl font-black text-white leading-relaxed text-center py-2 bg-slate-900/80 rounded-lg border border-cyan-500/50">
+                        「嘴巴可以說話打招呼，也能用來進食，讓我們攝取身體需要的營養」
+                    </p>
+                    <div class="flex justify-center mt-3">
+                        <button id="btnSpeakSummary" class="bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-black text-sm px-4 py-2 rounded-lg flex items-center gap-2 accessible-focus">
+                            <i class="fa-solid fa-volume-high"></i> 播放結語朗讀 (廣東話)
+                        </button>
+                    </div>
+                </div>
+
+                <div class="flex flex-col sm:flex-row gap-3">
+                    <button id="btnRetryGame" class="flex-1 bg-yellow-400 hover:bg-yellow-300 text-slate-950 font-black text-xl py-3 rounded-xl shadow-lg border-2 border-yellow-200 transition accessible-focus">
+                        🔄 再試一次比賽
+                    </button>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Accessibility Settings Modal -->
+    <div id="settingsModal" class="fixed inset-0 bg-slate-950/80 flex items-center justify-center p-4 z-50 hidden">
+        <div class="max-w-md w-full bg-slate-900 border-2 border-slate-600 rounded-2xl p-6 text-slate-100 shadow-2xl">
+            <div class="flex justify-between items-center mb-4 border-b border-slate-700 pb-2">
+                <h3 class="text-xl font-black text-yellow-400 flex items-center gap-2">
+                    <i class="fa-solid fa-sliders"></i> 無障礙輔助設定
+                </h3>
+                <button id="btnCloseSettings" class="text-slate-400 hover:text-white text-2xl font-bold">&times;</button>
+            </div>
+
+            <div class="space-y-4 text-sm font-bold">
+                <!-- Canvas Object Size Setting -->
+                <div>
+                    <label class="block text-slate-300 mb-1">食物尺寸大小：</label>
+                    <select id="selectFoodSize" class="w-full bg-slate-800 border border-slate-600 rounded-lg p-2 text-white">
+                        <option value="300">標準 (300px)</option>
+                        <option value="380" selected>大型 (380px - 建議視障學習)</option>
+                        <option value="440">特大 (440px)</option>
+                    </select>
+                </div>
+
+                <!-- Bite Radius Setting -->
+                <div>
+                    <label class="block text-slate-300 mb-1">咬食範圍 (嘴巴大小)：</label>
+                    <select id="selectBiteSize" class="w-full bg-slate-800 border border-slate-600 rounded-lg p-2 text-white">
+                        <option value="35">細小 (35px)</option>
+                        <option value="55" selected>標準 (55px - 適合視障)</option>
+                        <option value="80">特大咬食 (80px - 快速消除)</option>
+                    </select>
+                </div>
+
+                <!-- Intersection Dwell Sensitivity -->
+                <div>
+                    <label class="block text-slate-300 mb-1">相交吃食物所需時間/靈敏度：</label>
+                    <select id="selectSensitivity" class="w-full bg-slate-800 border border-slate-600 rounded-lg p-2 text-white">
+                        <option value="1">即時消除 (最快)</option>
+                        <option value="0.75" selected>標準靈敏度</option>
+                        <option value="0.5">高精確度 (需移動多些)</option>
+                    </select>
+                </div>
+
+                <!-- Test Cantonese TTS -->
+                <div class="pt-2 border-t border-slate-700">
+                    <button id="btnTestCantoneseVoice" class="w-full bg-purple-600 hover:bg-purple-500 text-white py-2 rounded-lg font-bold flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-bullhorn"></i> 測試廣東話語音提示
+                    </button>
+                </div>
+            </div>
+
+            <button id="btnSaveSettings" class="w-full mt-6 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black py-2 rounded-lg">
+                儲存並返回
+            </button>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-slate-900 border-t border-slate-800 p-3 text-center text-slate-400 text-xs font-bold">
+        嘴巴學習專用遊戲 &copy; 特殊教育/視障學習輔助設計 | 廣東話語音支援
+    </footer>
+
+    <script>
+        // Game Constants & Configuration
+        const TOTAL_DISHES_GOAL = 10;
+        const TOTAL_TIME_SECONDS = 120; // 2 minutes
+        const ELIMINATION_THRESHOLD = 0.70; // 70% food eaten
+
+        // Game State Object
+        let gameState = {
+            isPlaying: false,
+            timeRemaining: TOTAL_TIME_SECONDS,
+            dishesEaten: 0,
+            currentDishIndex: 0,
+            currentEatenPercent: 0,
+            dishCompleted: false,
+            soundEnabled: true,
+            timerInterval: null,
+            canvasSize: 380,
+            biteRadius: 55,
+            sensitivity: 0.75,
+            cantoneseSpokenFlags: {
+                min1: false,
+                sec30: false,
+                sec10: false
+            }
+        };
+
+        // Food Items Database derived from reference image
+        const FOOD_DATABASE = [
+            { id: 'pizza', name: '美味意式披薩 (Pizza) 🍕', type: 'pizza', mainColor: '#F97316', accentColor: '#EF4444', detailColor: '#FACC15' },
+            { id: 'burger', name: '巨型芝士漢堡 (Burger) 🍔', type: 'burger', mainColor: '#B45309', accentColor: '#22C55E', detailColor: '#FBBF24' },
+            { id: 'pasta', name: '蕃茄肉醬意粉 (Pasta) 🍝', type: 'pasta', mainColor: '#EF4444', accentColor: '#FDE047', detailColor: '#15803D' },
+            { id: 'tacos', name: '墨西哥香辣塔可 (Tacos) 🌮', type: 'tacos', mainColor: '#F59E0B', accentColor: '#10B981', detailColor: '#DC2626' },
+            { id: 'sushi', name: '三文魚壽司拼盤 (Sushi) 🍣', type: 'sushi', mainColor: '#1E293B', accentColor: '#FB923C', detailColor: '#FFFFFF' },
+            { id: 'curry', name: '香濃咖哩雞飯 (Curry Chicken) 🍛', type: 'curry', mainColor: '#D97706', accentColor: '#FEF08A', detailColor: '#B45309' },
+            { id: 'hotdog', name: '美式香腸熱狗 (Hot Dog) 🌭', type: 'hotdog', mainColor: '#D97706', accentColor: '#DC2626', detailColor: '#FACC15' },
+            { id: 'fries', name: '金黃香脆薯條 (French Fries) 🍟', type: 'fries', mainColor: '#EF4444', accentColor: '#FACC15', detailColor: '#FFFFFF' },
+            { id: 'springrolls', name: '酥脆炸春卷 (Spring Rolls) 🥖', type: 'springrolls', mainColor: '#B45309', accentColor: '#F59E0B', detailColor: '#10B981' },
+            { id: 'nachos', name: '芝士醬粟米片 (Nachos) 🧀', type: 'nachos', mainColor: '#FACC15', accentColor: '#DC2626', detailColor: '#16A34A' }
+        ];
+
+        // Cache DOM References
+        const foodCanvas = document.getElementById('foodCanvas');
+        const ctxFood = foodCanvas ? foodCanvas.getContext('2d') : null;
+        const mouthCursor = document.getElementById('mouthCursor');
+        const gameArena = document.getElementById('gameArena');
+        const timerDisplay = document.getElementById('timerDisplay');
+        const dishCountDisplay = document.getElementById('dishCountDisplay');
+        const progressFill = document.getElementById('progressFill');
+        const progressText = document.getElementById('progressText');
+        const foodTitleBanner = document.getElementById('foodTitleBanner');
+        const dishCompleteOverlay = document.getElementById('dishCompleteOverlay');
+        const waiterButtonContainer = document.getElementById('waiterButtonContainer');
+        const waiterHintText = document.getElementById('waiterHintText');
+        const btnCallWaiter = document.getElementById('btnCallWaiter');
+        const startOverlay = document.getElementById('startOverlay');
+        const resultModal = document.getElementById('resultModal');
+        const resultIcon = document.getElementById('resultIcon');
+        const resultTitle = document.getElementById('resultTitle');
+        const resultDesc = document.getElementById('resultDesc');
+        const audioUpload = document.getElementById('audioUpload');
+        const customBgAudio = document.getElementById('customBgAudio');
+        const bgAudioName = document.getElementById('bgAudioName');
+        const btnPlayBgAudio = document.getElementById('btnPlayBgAudio');
+        const btnToggleSound = document.getElementById('btnToggleSound');
+        const soundIcon = document.getElementById('soundIcon');
+        const soundStatusText = document.getElementById('soundStatusText');
+        const settingsModal = document.getElementById('settingsModal');
+        const btnOpenSettings = document.getElementById('btnOpenSettings');
+        const btnCloseSettings = document.getElementById('btnCloseSettings');
+        const btnSaveSettings = document.getElementById('btnSaveSettings');
+        const selectFoodSize = document.getElementById('selectFoodSize');
+        const selectBiteSize = document.getElementById('selectBiteSize');
+        const selectSensitivity = document.getElementById('selectSensitivity');
+        const btnTestCantoneseVoice = document.getElementById('btnTestCantoneseVoice');
+        const btnSpeakSummary = document.getElementById('btnSpeakSummary');
+        const btnStartGame = document.getElementById('btnStartGame');
+        const btnRetryGame = document.getElementById('btnRetryGame');
+
+        // Web Audio Synthesizer
+        let audioCtx = null;
+
+        function getAudioContext() {
+            if (!audioCtx) {
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                if (AudioContext) {
+                    audioCtx = new AudioContext();
+                }
+            }
+            if (audioCtx && audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+            return audioCtx;
+        }
+
+        // Bite / Eating Sound Generator
+        function playBiteSound() {
+            if (!gameState.soundEnabled) return;
+            try {
+                const ctx = getAudioContext();
+                if (!ctx) return;
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(180, ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(40, ctx.currentTime + 0.08);
+
+                gain.gain.setValueAtTime(0.3, ctx.currentTime);
+                gain.gain.linearRampToValueAtTime(0.01, ctx.currentTime + 0.08);
+
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+
+                osc.start();
+                osc.stop(ctx.currentTime + 0.08);
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        // Dish Complete Chime Sound Generator
+        function playChimeSound() {
+            if (!gameState.soundEnabled) return;
+            try {
+                const ctx = getAudioContext();
+                if (!ctx) return;
+                const notes = [523.25, 659.25, 783.99, 1046.50]; // C5, E5, G5, C6
+                notes.forEach((freq, idx) => {
+                    const osc = ctx.createOscillator();
+                    const gain = ctx.createGain();
+
+                    osc.type = 'sine';
+                    osc.frequency.value = freq;
+
+                    const startTime = ctx.currentTime + idx * 0.08;
+                    gain.gain.setValueAtTime(0, startTime);
+                    gain.gain.linearRampToValueAtTime(0.3, startTime + 0.02);
+                    gain.gain.exponentialRampToValueAtTime(0.001, startTime + 0.3);
+
+                    osc.connect(gain);
+                    gain.connect(ctx.destination);
+
+                    osc.start(startTime);
+                    osc.stop(startTime + 0.3);
+                });
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        // Cantonese Speech Synthesis Prompt
+        function speakCantonese(text) {
+            if (!gameState.soundEnabled || !('speechSynthesis' in window)) return;
+            
+            window.speechSynthesis.cancel(); // Stop current speech
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = 'zh-HK';
+            utterance.rate = 1.0;
+            utterance.pitch = 1.1;
+
+            // Find Cantonese voice if available
+            const voices = window.speechSynthesis.getVoices();
+            const hkVoice = voices.find(v => v.lang.includes('HK') || v.lang.includes('zh-HK'));
+            if (hkVoice) {
+                utterance.voice = hkVoice;
+            }
+
+            window.speechSynthesis.speak(utterance);
+        }
+
+        // Render ultra-realistic food dish graphics on canvas with detailed textures & lighting
+        function renderFoodDish(foodItem) {
+            if (!ctxFood) return;
+
+            const size = foodCanvas.width;
+            const center = size / 2;
+            const radius = size * 0.42;
+
+            ctxFood.clearRect(0, 0, size, size);
+            ctxFood.globalCompositeOperation = 'source-over';
+
+            // --- 1. REALISTIC CERAMIC PLATE WITH 3D SHADING & REFLECTION ---
+            // Outer plate drop shadow
+            ctxFood.save();
+            ctxFood.shadowColor = 'rgba(0, 0, 0, 0.6)';
+            ctxFood.shadowBlur = 25;
+            ctxFood.shadowOffsetY = 12;
+
+            // Plate rim base
+            ctxFood.beginPath();
+            ctxFood.arc(center, center, radius, 0, Math.PI * 2);
+            const plateGrad = ctxFood.createRadialGradient(center - radius*0.3, center - radius*0.3, radius*0.1, center, center, radius);
+            plateGrad.addColorStop(0, '#FFFFFF');
+            plateGrad.addColorStop(0.75, '#F1F5F9');
+            plateGrad.addColorStop(1, '#CBD5E1');
+            ctxFood.fillStyle = plateGrad;
+            ctxFood.fill();
+            ctxFood.restore();
+
+            // Plate Gold/Slate Trim Line
+            ctxFood.beginPath();
+            ctxFood.arc(center, center, radius * 0.94, 0, Math.PI * 2);
+            ctxFood.lineWidth = 4;
+            ctxFood.strokeStyle = '#D97706';
+            ctxFood.stroke();
+
+            // Inner Plate Basin Shadow
+            ctxFood.beginPath();
+            ctxFood.arc(center, center, radius * 0.86, 0, Math.PI * 2);
+            const basinGrad = ctxFood.createRadialGradient(center, center, radius * 0.7, center, center, radius * 0.86);
+            basinGrad.addColorStop(0, '#FFFFFF');
+            basinGrad.addColorStop(0.85, '#F8FAFC');
+            basinGrad.addColorStop(1, '#E2E8F0');
+            ctxFood.fillStyle = basinGrad;
+            ctxFood.fill();
+            ctxFood.lineWidth = 2;
+            ctxFood.strokeStyle = '#94A3B8';
+            ctxFood.stroke();
+
+            // Save transform for food drawing inside plate
+            ctxFood.save();
+            ctxFood.translate(center, center);
+
+            // --- 2. DETAILED REALISTIC FOOD GRAPHICS BASED ON TYPE ---
+            if (foodItem.type === 'pizza') {
+                // Crispy baked pizza crust with charred spots
+                ctxFood.beginPath();
+                ctxFood.arc(0, 0, radius * 0.78, 0, Math.PI * 2);
+                const crustGrad = ctxFood.createRadialGradient(0, 0, radius * 0.6, 0, Math.PI * 2, radius * 0.78);
+                crustGrad.addColorStop(0, '#F59E0B');
+                crustGrad.addColorStop(0.8, '#D97706');
+                crustGrad.addColorStop(1, '#92400E');
+                ctxFood.fillStyle = crustGrad;
+                ctxFood.fill();
+
+                // Charred crust spots
+                const charAngles = [0.2, 1.1, 2.3, 3.8, 4.9, 5.7];
+                charAngles.forEach(ang => {
+                    const cx = Math.cos(ang) * (radius * 0.73);
+                    const cy = Math.sin(ang) * (radius * 0.73);
+                    ctxFood.beginPath();
+                    ctxFood.ellipse(cx, cy, 8, 4, ang, 0, Math.PI * 2);
+                    ctxFood.fillStyle = 'rgba(67, 20, 7, 0.7)';
+                    ctxFood.fill();
+                });
+
+                // Melted Cheese & Tomato Sauce Base
+                ctxFood.beginPath();
+                ctxFood.arc(0, 0, radius * 0.68, 0, Math.PI * 2);
+                const cheeseGrad = ctxFood.createRadialGradient(-20, -20, 10, 0, 0, radius * 0.68);
+                cheeseGrad.addColorStop(0, '#FEF08A');
+                cheeseGrad.addColorStop(0.5, '#FACC15');
+                cheeseGrad.addColorStop(0.85, '#F97316');
+                cheeseGrad.addColorStop(1, '#DC2626');
+                ctxFood.fillStyle = cheeseGrad;
+                ctxFood.fill();
+
+                // Pizza Slices Lines (Pre-cut effect)
+                for (let i = 0; i < 6; i++) {
+                    const a = (i * Math.PI) / 3;
+                    ctxFood.beginPath();
+                    ctxFood.moveTo(0, 0);
+                    ctxFood.lineTo(Math.cos(a) * radius * 0.76, Math.sin(a) * radius * 0.76);
+                    ctxFood.lineWidth = 2.5;
+                    ctxFood.strokeStyle = 'rgba(120, 53, 15, 0.4)';
+                    ctxFood.stroke();
+                }
+
+                // Glistening Pepperoni Slices with Herbs
+                const pepPos = [
+                    { x: 0, y: -radius * 0.35 }, { x: radius * 0.35, y: -radius * 0.15 },
+                    { x: radius * 0.3, y: radius * 0.3 }, { x: -radius * 0.25, y: radius * 0.35 },
+                    { x: -radius * 0.38, y: -radius * 0.1 }, { x: 0, y: 0 }
+                ];
+                pepPos.forEach(p => {
+                    ctxFood.beginPath();
+                    ctxFood.arc(p.x, p.y, radius * 0.13, 0, Math.PI * 2);
+                    const pepGrad = ctxFood.createRadialGradient(p.x - 4, p.y - 4, 2, p.x, p.y, radius * 0.13);
+                    pepGrad.addColorStop(0, '#EF4444');
+                    pepGrad.addColorStop(0.7, '#B91C1C');
+                    pepGrad.addColorStop(1, '#7F1D1D');
+                    ctxFood.fillStyle = pepGrad;
+                    ctxFood.fill();
+                    ctxFood.lineWidth = 2;
+                    ctxFood.strokeStyle = '#991B1B';
+                    ctxFood.stroke();
+
+                    // Pepperoni specular highlight
+                    ctxFood.beginPath();
+                    ctxFood.arc(p.x - 3, p.y - 3, 3, 0, Math.PI * 2);
+                    ctxFood.fillStyle = 'rgba(255, 255, 255, 0.5)';
+                    ctxFood.fill();
+                });
+
+                // Basil/Oregano sprinkles
+                for (let i = 0; i < 35; i++) {
+                    const rx = (Math.random() - 0.5) * radius * 1.1;
+                    const ry = (Math.random() - 0.5) * radius * 1.1;
+                    if (rx * rx + ry * ry < radius * radius * 0.38) {
+                        ctxFood.fillStyle = Math.random() > 0.4 ? '#15803D' : '#166534';
+                        ctxFood.fillRect(rx, ry, 3, 3);
+                    }
+                }
+
+            } else if (foodItem.type === 'burger') {
+                // Ruffled Fresh Lettuce Bed
+                ctxFood.beginPath();
+                for (let a = 0; a < Math.PI * 2; a += 0.2) {
+                    const r = radius * 0.72 + Math.sin(a * 8) * 10;
+                    const lx = Math.cos(a) * r;
+                    const ly = Math.sin(a) * r;
+                    if (a === 0) ctxFood.moveTo(lx, ly);
+                    else ctxFood.lineTo(lx, ly);
+                }
+                ctxFood.closePath();
+                const lettuceGrad = ctxFood.createRadialGradient(0, 0, radius * 0.4, 0, 0, radius * 0.72);
+                lettuceGrad.addColorStop(0, '#4ADE80');
+                lettuceGrad.addColorStop(0.8, '#22C55E');
+                lettuceGrad.addColorStop(1, '#15803D');
+                ctxFood.fillStyle = lettuceGrad;
+                ctxFood.fill();
+
+                // Juicy Grilled Beef Patty with Seared Texture
+                ctxFood.beginPath();
+                ctxFood.arc(0, 0, radius * 0.62, 0, Math.PI * 2);
+                const pattyGrad = ctxFood.createRadialGradient(-10, -10, 5, 0, 0, radius * 0.62);
+                pattyGrad.addColorStop(0, '#78350F');
+                pattyGrad.addColorStop(0.7, '#451A03');
+                pattyGrad.addColorStop(1, '#292524');
+                ctxFood.fillStyle = pattyGrad;
+                ctxFood.fill();
+
+                // Melted Cheese corners drooping
+                ctxFood.beginPath();
+                ctxFood.rect(-radius * 0.45, -radius * 0.45, radius * 0.9, radius * 0.9);
+                ctxFood.fillStyle = '#FACC15';
+                ctxFood.fill();
+
+                // Top Brioche Bun with Golden Gradient & Highlight
+                ctxFood.beginPath();
+                ctxFood.arc(0, 0, radius * 0.52, 0, Math.PI * 2);
+                const bunGrad = ctxFood.createRadialGradient(-radius * 0.15, -radius * 0.15, 5, 0, 0, radius * 0.52);
+                bunGrad.addColorStop(0, '#FDE047');
+                bunGrad.addColorStop(0.3, '#F59E0B');
+                bunGrad.addColorStop(0.85, '#D97706');
+                bunGrad.addColorStop(1, '#B45309');
+                ctxFood.fillStyle = bunGrad;
+                ctxFood.fill();
+
+                // Toasted Sesame Seeds on top bun
+                const seeds = [
+                    {x: -15, y: -20}, {x: 10, y: -30}, {x: -30, y: 0}, {x: 25, y: -5},
+                    {x: -10, y: 25}, {x: 15, y: 20}, {x: -25, y: -25}, {x: 30, y: 20}, {x: 0, y: -10}
+                ];
+                seeds.forEach(s => {
+                    ctxFood.beginPath();
+                    ctxFood.ellipse(s.x, s.y, 4, 2, Math.PI / 4, 0, Math.PI * 2);
+                    ctxFood.fillStyle = '#FEF3C7';
+                    ctxFood.fill();
+                    ctxFood.lineWidth = 1;
+                    ctxFood.strokeStyle = '#D97706';
+                    ctxFood.stroke();
+                });
+
+            } else if (foodItem.type === 'pasta') {
+                // Spaghetti Noodles Bed with Depth Shadows
+                ctxFood.lineWidth = 8;
+                ctxFood.lineCap = 'round';
+                for (let i = 0; i < 45; i++) {
+                    const ang = (i * 0.4);
+                    const r = (i / 45) * radius * 0.65;
+                    const x1 = Math.cos(ang) * r;
+                    const y1 = Math.sin(ang) * r;
+                    const x2 = Math.cos(ang + 1.2) * (r + 15);
+                    const y2 = Math.sin(ang + 1.2) * (r + 15);
+
+                    ctxFood.beginPath();
+                    ctxFood.moveTo(x1, y1);
+                    ctxFood.quadraticCurveTo(x1 + 10, y1 - 10, x2, y2);
+                    ctxFood.strokeStyle = i % 2 === 0 ? '#FEF08A' : '#FDE047';
+                    ctxFood.stroke();
+                }
+
+                // Rich Chunky Bolognese Tomato Sauce Heap
+                ctxFood.beginPath();
+                ctxFood.arc(0, 0, radius * 0.45, 0, Math.PI * 2);
+                const sauceGrad = ctxFood.createRadialGradient(-10, -10, 5, 0, 0, radius * 0.45);
+                sauceGrad.addColorStop(0, '#EF4444');
+                sauceGrad.addColorStop(0.7, '#DC2626');
+                sauceGrad.addColorStop(1, '#991B1B');
+                ctxFood.fillStyle = sauceGrad;
+                ctxFood.fill();
+
+                // Meat Chunks in sauce
+                for (let i = 0; i < 18; i++) {
+                    const mx = (Math.random() - 0.5) * radius * 0.7;
+                    const my = (Math.random() - 0.5) * radius * 0.7;
+                    if (mx * mx + my * my < radius * radius * 0.15) {
+                        ctxFood.beginPath();
+                        ctxFood.arc(mx, my, 4 + Math.random() * 4, 0, Math.PI * 2);
+                        ctxFood.fillStyle = '#78350F';
+                        ctxFood.fill();
+                    }
+                }
+
+                // Grated Parmesan Cheese & Fresh Basil Leaves
+                for (let i = 0; i < 40; i++) {
+                    const px = (Math.random() - 0.5) * radius * 0.8;
+                    const py = (Math.random() - 0.5) * radius * 0.8;
+                    if (px * px + py * py < radius * radius * 0.25) {
+                        ctxFood.fillStyle = '#FFFFFF';
+                        ctxFood.fillRect(px, py, 3, 3);
+                    }
+                }
+
+                // Center Basil Garnish
+                ctxFood.beginPath();
+                ctxFood.ellipse(0, -5, 14, 7, Math.PI / 4, 0, Math.PI * 2);
+                ctxFood.fillStyle = '#15803D';
+                ctxFood.fill();
+
+            } else if (foodItem.type === 'sushi') {
+                // Slate Sushi Board Base
+                ctxFood.beginPath();
+                ctxFood.roundRect(-radius * 0.65, -radius * 0.55, radius * 1.3, radius * 1.1, 12);
+                ctxFood.fillStyle = '#1E293B';
+                ctxFood.fill();
+                ctxFood.lineWidth = 3;
+                ctxFood.strokeStyle = '#475569';
+                ctxFood.stroke();
+
+                // Salmon Nigiri (Top & Bottom)
+                [-radius * 0.28, radius * 0.28].forEach(offsetY => {
+                    // White Sushi Rice Bed
+                    ctxFood.beginPath();
+                    ctxFood.ellipse(-radius * 0.1, offsetY, radius * 0.32, radius * 0.16, 0, 0, Math.PI * 2);
+                    ctxFood.fillStyle = '#F8FAFC';
+                    ctxFood.fill();
+                    ctxFood.strokeStyle = '#CBD5E1';
+                    ctxFood.lineWidth = 1.5;
+                    ctxFood.stroke();
+
+                    // Salmon Slice with Marbling Lines
+                    ctxFood.beginPath();
+                    ctxFood.ellipse(-radius * 0.1, offsetY - 2, radius * 0.34, radius * 0.15, 0, 0, Math.PI * 2);
+                    const salmonGrad = ctxFood.createLinearGradient(-radius * 0.4, offsetY, 0, offsetY);
+                    salmonGrad.addColorStop(0, '#FB923C');
+                    salmonGrad.addColorStop(0.5, '#F97316');
+                    salmonGrad.addColorStop(1, '#EA580C');
+                    ctxFood.fillStyle = salmonGrad;
+                    ctxFood.fill();
+
+                    // White fat marbling stripes
+                    for (let x = -radius * 0.35; x < radius * 0.15; x += 12) {
+                        ctxFood.beginPath();
+                        ctxFood.moveTo(x, offsetY - 10);
+                        ctxFood.lineTo(x + 6, offsetY + 8);
+                        ctxFood.strokeStyle = 'rgba(255, 255, 255, 0.7)';
+                        ctxFood.lineWidth = 2;
+                        ctxFood.stroke();
+                    }
+                });
+
+                // Maki Rolls (Right Side)
+                [-radius * 0.25, 0, radius * 0.25].forEach(offsetY => {
+                    // Dark Green Nori Seaweed Wrap
+                    ctxFood.beginPath();
+                    ctxFood.arc(radius * 0.32, offsetY, radius * 0.16, 0, Math.PI * 2);
+                    ctxFood.fillStyle = '#064E3B';
+                    ctxFood.fill();
+
+                    // Rice Layer
+                    ctxFood.beginPath();
+                    ctxFood.arc(radius * 0.32, offsetY, radius * 0.12, 0, Math.PI * 2);
+                    ctxFood.fillStyle = '#FFFFFF';
+                    ctxFood.fill();
+
+                    // Filling Center (Tuna / Avocado)
+                    ctxFood.beginPath();
+                    ctxFood.arc(radius * 0.32, offsetY, radius * 0.06, 0, Math.PI * 2);
+                    ctxFood.fillStyle = '#EF4444';
+                    ctxFood.fill();
+                });
+
+                // Wasabi Dollop & Ginger
+                ctxFood.beginPath();
+                ctxFood.arc(-radius * 0.45, 0, 12, 0, Math.PI * 2);
+                ctxFood.fillStyle = '#84CC16';
+                ctxFood.fill();
+
+            } else if (foodItem.type === 'fries') {
+                // French Fries Red Pocket Bag
+                ctxFood.beginPath();
+                ctxFood.moveTo(-radius * 0.45, radius * 0.55);
+                ctxFood.lineTo(radius * 0.45, radius * 0.55);
+                ctxFood.lineTo(radius * 0.52, -radius * 0.05);
+                ctxFood.lineTo(-radius * 0.52, -radius * 0.05);
+                ctxFood.closePath();
+                const bagGrad = ctxFood.createLinearGradient(-radius * 0.5, 0, radius * 0.5, 0);
+                bagGrad.addColorStop(0, '#DC2626');
+                bagGrad.addColorStop(0.5, '#EF4444');
+                bagGrad.addColorStop(1, '#B91C1C');
+                ctxFood.fillStyle = bagGrad;
+                ctxFood.fill();
+
+                // Crispy Golden French Fries Sticks Stacked
+                for (let i = -7; i <= 7; i++) {
+                    const fx = i * 11;
+                    const h = radius * (0.55 + Math.cos(i * 0.4) * 0.15);
+                    const angle = i * 0.05;
+
+                    ctxFood.save();
+                    ctxFood.translate(fx, -radius * 0.05);
+                    ctxFood.rotate(angle);
+
+                    ctxFood.beginPath();
+                    ctxFood.roundRect(-6, -h, 12, h, 3);
+                    const fryGrad = ctxFood.createLinearGradient(-6, 0, 6, 0);
+                    fryGrad.addColorStop(0, '#FEF08A');
+                    fryGrad.addColorStop(0.5, '#FACC15');
+                    fryGrad.addColorStop(1, '#EAB308');
+                    ctxFood.fillStyle = fryGrad;
+                    ctxFood.fill();
+                    ctxFood.lineWidth = 1;
+                    ctxFood.strokeStyle = '#CA8A04';
+                    ctxFood.stroke();
+
+                    // Crisp toasted tips
+                    ctxFood.fillStyle = '#B45309';
+                    ctxFood.fillRect(-5, -h, 10, 6);
+
+                    ctxFood.restore();
+                }
+
+                // Ketchup Sauce Dip Cup
+                ctxFood.beginPath();
+                ctxFood.arc(radius * 0.48, radius * 0.35, 18, 0, Math.PI * 2);
+                ctxFood.fillStyle = '#991B1B';
+                ctxFood.fill();
+                ctxFood.beginPath();
+                ctxFood.arc(radius * 0.48, radius * 0.35, 14, 0, Math.PI * 2);
+                ctxFood.fillStyle = '#DC2626';
+                ctxFood.fill();
+
+            } else if (foodItem.type === 'curry') {
+                // Curry Bowl Rim & Rice/Curry Split
+                ctxFood.beginPath();
+                ctxFood.arc(0, 0, radius * 0.72, 0, Math.PI * 2);
+                ctxFood.fillStyle = '#FEF08A';
+                ctxFood.fill();
+
+                // Steamed White Jasmine Rice Half
+                ctxFood.beginPath();
+                ctxFood.arc(0, 0, radius * 0.7, Math.PI * 0.5, Math.PI * 1.5);
+                ctxFood.fillStyle = '#FFFFFF';
+                ctxFood.fill();
+                ctxFood.lineWidth = 2;
+                ctxFood.strokeStyle = '#E2E8F0';
+                ctxFood.stroke();
+
+                // Rich Golden Aromatic Curry Sauce Half
+                ctxFood.beginPath();
+                ctxFood.arc(0, 0, radius * 0.7, -Math.PI * 0.5, Math.PI * 0.5);
+                const curryGrad = ctxFood.createRadialGradient(20, 0, 10, 0, 0, radius * 0.7);
+                curryGrad.addColorStop(0, '#F59E0B');
+                curryGrad.addColorStop(0.6, '#D97706');
+                curryGrad.addColorStop(1, '#B45309');
+                ctxFood.fillStyle = curryGrad;
+                ctxFood.fill();
+
+                // Potato & Chicken Chunks in Curry
+                const chunks = [
+                    { x: 20, y: -25, color: '#FEF08A', size: 14 },
+                    { x: 45, y: 0, color: '#F97316', size: 12 },
+                    { x: 30, y: 30, color: '#FEF08A', size: 15 },
+                    { x: 50, y: -20, color: '#B45309', size: 13 }
+                ];
+                chunks.forEach(c => {
+                    ctxFood.beginPath();
+                    ctxFood.roundRect(c.x, c.y, c.size, c.size, 4);
+                    ctxFood.fillStyle = c.color;
+                    ctxFood.fill();
+                });
+
+            } else if (foodItem.type === 'hotdog') {
+                // Soft Bun
+                ctxFood.beginPath();
+                ctxFood.ellipse(0, 0, radius * 0.65, radius * 0.35, -Math.PI/6, 0, Math.PI * 2);
+                const hdBunGrad = ctxFood.createLinearGradient(-radius*0.5, -radius*0.3, radius*0.5, radius*0.3);
+                hdBunGrad.addColorStop(0, '#FDE047');
+                hdBunGrad.addColorStop(0.5, '#F59E0B');
+                hdBunGrad.addColorStop(1, '#B45309');
+                ctxFood.fillStyle = hdBunGrad;
+                ctxFood.fill();
+
+                // Plump Grilled Sausage
+                ctxFood.beginPath();
+                ctxFood.ellipse(0, 0, radius * 0.62, radius * 0.18, -Math.PI/6, 0, Math.PI * 2);
+                const sausageGrad = ctxFood.createLinearGradient(-radius*0.5, -radius*0.2, radius*0.5, radius*0.2);
+                sausageGrad.addColorStop(0, '#EF4444');
+                sausageGrad.addColorStop(0.5, '#DC2626');
+                sausageGrad.addColorStop(1, '#991B1B');
+                ctxFood.fillStyle = sausageGrad;
+                ctxFood.fill();
+
+                // Mustard & Ketchup Zigzags
+                ctxFood.beginPath();
+                ctxFood.moveTo(-radius * 0.45, radius * 0.2);
+                for (let x = -radius * 0.4; x <= radius * 0.4; x += 15) {
+                    const y = Math.sin(x * 0.2) * 12 - (x * 0.5);
+                    ctxFood.lineTo(x, y);
+                }
+                ctxFood.lineWidth = 5;
+                ctxFood.strokeStyle = '#FACC15';
+                ctxFood.stroke();
+
+            } else {
+                // Default Generic Gourmet Dish (Nachos / Tacos / Spring Rolls)
+                ctxFood.beginPath();
+                ctxFood.arc(0, 0, radius * 0.72, 0, Math.PI * 2);
+                const gGrad = ctxFood.createRadialGradient(-10, -10, 10, 0, 0, radius * 0.72);
+                gGrad.addColorStop(0, foodItem.mainColor);
+                gGrad.addColorStop(0.8, foodItem.accentColor);
+                gGrad.addColorStop(1, '#451A03');
+                ctxFood.fillStyle = gGrad;
+                ctxFood.fill();
+
+                // Garnishes
+                for (let i = 0; i < 8; i++) {
+                    const a = (i * Math.PI) / 4;
+                    const gx = Math.cos(a) * radius * 0.4;
+                    const gy = Math.sin(a) * radius * 0.4;
+                    ctxFood.beginPath();
+                    ctxFood.arc(gx, gy, radius * 0.12, 0, Math.PI * 2);
+                    ctxFood.fillStyle = foodItem.detailColor;
+                    ctxFood.fill();
+                }
+            }
+
+            ctxFood.restore();
+
+            gameState.currentEatenPercent = 0;
+            gameState.dishCompleted = false;
+            updateProgressUI();
+
+            dishCompleteOverlay.classList.add('hidden');
+            foodTitleBanner.textContent = `第 ${gameState.dishesEaten + 1} 碟：${foodItem.name}`;
+            
+            speakCantonese(`第 ${gameState.dishesEaten + 1} 碟，${foodItem.name}，請用嘴巴吃！`);
+        }
+
+        function calculateEatenPercentage() {
+            if (!ctxFood) return;
+            const size = foodCanvas.width;
+            const imageData = ctxFood.getImageData(0, 0, size, size);
+            const pixels = imageData.data;
+            let transparentPixels = 0;
+            let totalFoodPixels = 0;
+
+            const center = size / 2;
+            const radius = size * 0.42;
+            const radiusSq = radius * radius;
+
+            for (let y = 0; y < size; y += 6) {
+                for (let x = 0; x < size; x += 6) {
+                    const dx = x - center;
+                    const dy = y - center;
+                    if (dx * dx + dy * dy <= radiusSq) {
+                        totalFoodPixels++;
+                        const alphaIndex = (y * size + x) * 4 + 3;
+                        if (pixels[alphaIndex] < 30) {
+                            transparentPixels++;
+                        }
+                    }
+                }
+            }
+
+            const percent = transparentPixels / totalFoodPixels;
+            gameState.currentEatenPercent = Math.min(100, Math.round(percent * 100));
+            updateProgressUI();
+
+            if (percent >= ELIMINATION_THRESHOLD && !gameState.dishCompleted) {
+                onDishCompleted();
+            }
+        }
+
+        function updateProgressUI() {
+            progressFill.style.width = `${gameState.currentEatenPercent}%`;
+            progressText.textContent = `${gameState.currentEatenPercent}% (目標 70%)`;
+        }
+
+        function onDishCompleted() {
+            gameState.dishCompleted = true;
+            gameState.dishesEaten++;
+            dishCountDisplay.textContent = `${gameState.dishesEaten} / ${TOTAL_DISHES_GOAL}`;
+
+            playChimeSound();
+            dishCompleteOverlay.classList.remove('hidden');
+
+            waiterButtonContainer.classList.remove('hidden');
+            waiterHintText.classList.remove('hidden');
+
+            if (gameState.dishesEaten >= TOTAL_DISHES_GOAL) {
+                setTimeout(() => finishGame(true), 800);
+            } else {
+                speakCantonese(`成功吃完第 ${gameState.dishesEaten} 碟！請移到左邊，按呼叫服務員按鈕！`);
+            }
+        }
+
+        function performBite(x, y) {
+            if (!gameState.isPlaying || gameState.dishCompleted || !ctxFood) return;
+
+            const rect = foodCanvas.getBoundingClientRect();
+            const canvasX = (x - rect.left) * (foodCanvas.width / rect.width);
+            const canvasY = (y - rect.top) * (foodCanvas.height / rect.height);
+
+            if (canvasX >= 0 && canvasX <= foodCanvas.width && canvasY >= 0 && canvasY <= foodCanvas.height) {
+                ctxFood.globalCompositeOperation = 'destination-out';
+                ctxFood.beginPath();
+                ctxFood.arc(canvasX, canvasY, gameState.biteRadius * gameState.sensitivity, 0, Math.PI * 2);
+                ctxFood.fill();
+
+                playBiteSound();
+                calculateEatenPercentage();
+
+                mouthCursor.classList.add('scale-125');
+                setTimeout(() => mouthCursor.classList.remove('scale-125'), 100);
+            }
+        }
+
+        function handlePointerMove(e) {
+            const clientX = e.clientX || (e.touches && e.touches[0].clientX);
+            const clientY = e.clientY || (e.touches && e.touches[0].clientY);
+
+            if (clientX !== undefined && clientY !== undefined) {
+                mouthCursor.style.left = `${clientX}px`;
+                mouthCursor.style.top = `${clientY}px`;
+
+                if (gameState.isPlaying && !gameState.dishCompleted) {
+                    performBite(clientX, clientY);
+                }
+            }
+        }
+
+        gameArena.addEventListener('mouseenter', () => mouthCursor.classList.remove('hidden'));
+        gameArena.addEventListener('mouseleave', () => mouthCursor.classList.add('hidden'));
+        window.addEventListener('mousemove', handlePointerMove);
+        window.addEventListener('touchmove', handlePointerMove, { passive: true });
+
+        function serveNextDish() {
+            if (!gameState.isPlaying || !gameState.dishCompleted) return;
+
+            waiterButtonContainer.classList.add('hidden');
+            waiterHintText.classList.add('hidden');
+
+            gameState.currentDishIndex = (gameState.currentDishIndex + 1) % FOOD_DATABASE.length;
+            renderFoodDish(FOOD_DATABASE[gameState.currentDishIndex]);
+        }
+
+        btnCallWaiter.addEventListener('click', serveNextDish);
+        btnCallWaiter.addEventListener('mouseenter', serveNextDish);
+
+        function updateTimer() {
+            if (!gameState.isPlaying) return;
+
+            gameState.timeRemaining--;
+
+            const mins = Math.floor(gameState.timeRemaining / 60);
+            const secs = gameState.timeRemaining % 60;
+            timerDisplay.textContent = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+
+            if (gameState.timeRemaining === 60 && !gameState.cantoneseSpokenFlags.min1) {
+                gameState.cantoneseSpokenFlags.min1 = true;
+                speakCantonese('注意！比賽仲有 1 分鐘！繼續加油吃！');
+            } else if (gameState.timeRemaining === 30 && !gameState.cantoneseSpokenFlags.sec30) {
+                gameState.cantoneseSpokenFlags.sec30 = true;
+                speakCantonese('快啲啦！比賽仲有 30 秒！');
+            } else if (gameState.timeRemaining === 10 && !gameState.cantoneseSpokenFlags.sec10) {
+                gameState.cantoneseSpokenFlags.sec10 = true;
+                speakCantonese('最後 10 秒倒數！加油！');
+            }
+
+            if (gameState.timeRemaining <= 0) {
+                finishGame(false);
+            }
+        }
+
+        function startGame() {
+            getAudioContext();
+            
+            gameState.isPlaying = true;
+            gameState.timeRemaining = TOTAL_TIME_SECONDS;
+            gameState.dishesEaten = 0;
+            gameState.currentDishIndex = 0;
+            gameState.cantoneseSpokenFlags = { min1: false, sec30: false, sec10: false };
+
+            dishCountDisplay.textContent = `0 / ${TOTAL_DISHES_GOAL}`;
+            timerDisplay.textContent = '02:00';
+
+            startOverlay.classList.add('hidden');
+            resultModal.classList.add('hidden');
+            waiterButtonContainer.classList.add('hidden');
+            waiterHintText.classList.add('hidden');
+
+            renderFoodDish(FOOD_DATABASE[0]);
+
+            clearInterval(gameState.timerInterval);
+            gameState.timerInterval = setInterval(updateTimer, 1000);
+
+            speakCantonese('大胃王比賽正式開始！請用嘴巴吃光食物！');
+        }
+
+        function finishGame(isWin) {
+            gameState.isPlaying = false;
+            clearInterval(gameState.timerInterval);
+
+            resultModal.classList.remove('hidden');
+
+            if (isWin) {
+                resultIcon.textContent = '🏆 🎉';
+                resultTitle.textContent = '恭喜你！大胃王比賽獲勝！';
+                resultTitle.className = 'text-3xl font-black text-yellow-400 mb-2';
+                resultDesc.textContent = `你太棒了！在限時內順利吃完了全部 ${TOTAL_DISHES_GOAL} 碟美食！`;
+                speakCantonese('恭喜你！你成功吃完全部十碟美食，獲得大胃王冠軍！嘴巴可以說話打招呼，也能用來進食，讓我們攝取身體需要的營養！');
+            } else {
+                resultIcon.textContent = '⏱️ 🍲';
+                resultTitle.textContent = '時間到！再試一次吧！';
+                resultTitle.className = 'text-3xl font-black text-amber-400 mb-2';
+                resultDesc.textContent = `時間結束了！你一共吃了 ${gameState.dishesEaten} 碟食物。繼續練習，下次一定可以完成！`;
+                speakCantonese('時間到了！唔緊要，我哋再嚟過！嘴巴可以說話打招呼，也能用來進食，讓我們攝取身體需要的營養！');
+            }
+        }
+
+        // MP3 Audio Upload Handlers
+        audioUpload.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                const objectUrl = URL.createObjectURL(file);
+                customBgAudio.src = objectUrl;
+                bgAudioName.textContent = `播放: ${file.name.substring(0, 12)}...`;
+                btnPlayBgAudio.classList.remove('hidden');
+                speakCantonese('自訂廣東話語音檔案已成功上載！');
+            }
+        });
+
+        btnPlayBgAudio.addEventListener('click', () => {
+            if (customBgAudio.paused) {
+                customBgAudio.play();
+                btnPlayBgAudio.classList.replace('bg-emerald-500', 'bg-amber-500');
+                btnPlayBgAudio.innerHTML = '<i class="fa-solid fa-pause"></i> 暫停自訂音頻';
+            } else {
+                customBgAudio.pause();
+                btnPlayBgAudio.classList.replace('bg-amber-500', 'bg-emerald-500');
+                btnPlayBgAudio.innerHTML = '<i class="fa-solid fa-play"></i> 播放自訂音頻';
+            }
+        });
+
+        // Mute / Unmute Toggle
+        btnToggleSound.addEventListener('click', () => {
+            gameState.soundEnabled = !gameState.soundEnabled;
+            if (gameState.soundEnabled) {
+                soundIcon.className = 'fa-solid fa-volume-high';
+                soundStatusText.textContent = '聲音: 開啟';
+                speakCantonese('聲音提示已開啟');
+            } else {
+                soundIcon.className = 'fa-solid fa-volume-xmark';
+                soundStatusText.textContent = '聲音: 靜音';
+                if ('speechSynthesis' in window) {
+                    window.speechSynthesis.cancel();
+                }
+            }
+        });
+
+        // Modal Controls
+        btnOpenSettings.addEventListener('click', () => settingsModal.classList.remove('hidden'));
+        btnCloseSettings.addEventListener('click', () => settingsModal.classList.add('hidden'));
+
+        btnSaveSettings.addEventListener('click', () => {
+            const newSize = parseInt(selectFoodSize.value);
+            foodCanvas.width = newSize;
+            foodCanvas.height = newSize;
+            gameState.canvasSize = newSize;
+
+            gameState.biteRadius = parseInt(selectBiteSize.value);
+            gameState.sensitivity = parseFloat(selectSensitivity.value);
+
+            if (gameState.isPlaying) {
+                renderFoodDish(FOOD_DATABASE[gameState.currentDishIndex]);
+            }
+
+            settingsModal.classList.add('hidden');
+            speakCantonese('輔助設定已更新');
+        });
+
+        btnTestCantoneseVoice.addEventListener('click', () => {
+            speakCantonese('測試廣東話語音：嘴巴可以說話打招呼，也能用來進食！');
+        });
+
+        btnSpeakSummary.addEventListener('click', () => {
+            speakCantonese('嘴巴可以說話打招呼，也能用來進食，讓我們攝取身體需要的營養');
+        });
+
+        btnStartGame.addEventListener('click', startGame);
+        btnRetryGame.addEventListener('click', startGame);
+
+        // Load voices on page load
+        if ('speechSynthesis' in window) {
+            window.speechSynthesis.onvoiceschanged = () => {
+                window.speechSynthesis.getVoices();
+            };
+        }
+    </script>
+</body>
+</html>

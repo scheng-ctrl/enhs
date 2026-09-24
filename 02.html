@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>音樂會鼓手：聽覺器官探索遊戲</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700;900&display=swap');
+    
+    body {
+      font-family: 'Noto Sans TC', sans-serif;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    /* Custom Drumstick Cursor Overlay Styling */
+    .custom-drum-cursor {
+      pointer-events: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      z-index: 9999;
+      transform: translate(-15px, -15px) rotate(-25deg);
+      transition: transform 0.05s ease-out;
+      filter: drop-shadow(3px 5px 4px rgba(0,0,0,0.6));
+    }
+
+    .custom-drum-cursor.strike {
+      transform: translate(-15px, 5px) rotate(15deg) scale(0.95);
+    }
+
+    /* High Contrast and Stage Visual Effects */
+    .stage-glow {
+      box-shadow: 0 0 50px rgba(59, 130, 246, 0.4), inset 0 0 80px rgba(0, 0, 0, 0.8);
+    }
+
+    .drum-target-glow {
+      box-shadow: 0 0 35px #f59e0b, 0 0 70px #ef4444;
+      animation: pulse-border 1.5s infinite alternate;
+    }
+
+    @keyframes pulse-border {
+      0% { box-shadow: 0 0 20px #f59e0b, 0 0 40px rgba(239,68,68,0.5); transform: scale(1); }
+      100% { box-shadow: 0 0 45px #f59e0b, 0 0 80px rgba(239,68,68,0.9); transform: scale(1.03); }
+    }
+
+    .high-contrast-mode {
+      background-color: #000000 !important;
+      color: #ffff00 !important;
+    }
+
+    .high-contrast-mode button {
+      border: 3px solid #ffff00 !important;
+      background-color: #000000 !important;
+      color: #ffff00 !important;
+    }
+  </style>
+</head>
+<body class="bg-slate-950 text-white min-h-screen flex flex-col justify-between overflow-x-hidden cursor-none">
+
+  <!-- Custom Drumstick Cursor Graphic -->
+  <div id="drumstickCursor" class="custom-drum-cursor">
+    <svg width="70" height="70" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <!-- Drumstick 1 -->
+      <path d="M12 88 L80 20 L86 24 L18 92 Z" fill="#D97706" stroke="#78350F" stroke-width="2"/>
+      <ellipse cx="83" cy="22" rx="5" ry="7" transform="rotate(-45 83 22)" fill="#FDE68A" stroke="#B45309" stroke-width="1.5"/>
+      <!-- Drumstick 2 -->
+      <path d="M22 92 L90 24 L96 28 L28 96 Z" fill="#B45309" stroke="#451A03" stroke-width="2"/>
+      <ellipse cx="93" cy="26" rx="5" ry="7" transform="rotate(-45 93 26)" fill="#FEF3C7" stroke="#92400E" stroke-width="1.5"/>
+    </svg>
+  </div>
+
+  <!-- Header & Accessibility Toolbar -->
+  <header class="bg-slate-900/90 border-b border-slate-800 p-4 sticky top-0 z-40 backdrop-blur-md">
+    <div class="max-w-7xl mx-auto flex flex-wrap justify-between items-center gap-4">
+      <div class="flex items-center space-x-3">
+        <i class="fa-solid font-bold fa-ear-listen text-amber-400 text-3xl animate-bounce"></i>
+        <div>
+          <h1 class="text-xl md:text-2xl font-black tracking-wide text-amber-300">聽覺探索音樂會</h1>
+          <p class="text-xs text-slate-400">視障學生專用音樂聽覺互動學習平台</p>
+        </div>
+      </div>
+
+      <div class="flex items-center space-x-3">
+        <button id="btnSpeechObjective" class="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-lg transition shadow-lg flex items-center gap-2 text-sm md:text-base">
+          <i class="fa-solid fa-volume-high text-lg"></i>
+          <span>朗讀學習目標</span>
+        </button>
+        <button id="btnToggleContrast" class="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-yellow-300 border border-amber-500/40 rounded-lg text-sm font-semibold transition flex items-center gap-2">
+          <i class="fa-solid fa-circle-half-stroke"></i>
+          <span>高對比模式</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Game Container -->
+  <main class="max-w-7xl mx-auto w-full px-4 py-4 flex-grow flex flex-col gap-6">
+
+    <!-- Learning Objective Card -->
+    <section class="bg-amber-950/40 border-2 border-amber-500/60 rounded-2xl p-4 md:p-6 shadow-xl relative overflow-hidden">
+      <div class="flex items-start gap-4">
+        <div class="p-3 bg-amber-500 text-slate-950 rounded-xl text-2xl hidden md:block">
+          <i class="fa-solid fa-drum text-3xl"></i>
+        </div>
+        <div class="space-y-2">
+          <div>
+            <span class="text-amber-400 font-bold text-xs uppercase tracking-widest block mb-1">【 學習目標 : 耳朵可以做甚麼 】</span>
+            <p class="text-lg md:text-xl font-bold text-slate-100 leading-relaxed" id="objectiveText">
+              耳朵是我們的聽覺器官，能接收聲音，幫助我們聽見家人說話與各種環境聲音。
+            </p>
+          </div>
+          <!-- Band Member Solo Instruction -->
+          <div class="bg-amber-900/50 border border-amber-500/40 rounded-xl p-3 mt-2">
+            <span class="text-amber-300 font-extrabold text-sm flex items-center gap-2 mb-1">
+              <i class="fa-solid fa-guitar text-amber-400"></i> 【 樂隊角色與任務 】
+            </span>
+            <p class="text-sm md:text-base text-amber-100 font-semibold" id="bandInstructionText">
+              你是樂隊的重要鼓手成員！要在演唱會中進行鼓聲獨奏 (Solo)。當音樂停頓時，請移動鼓棍觸碰大鼓開啟你的獨奏，讓演唱會音樂繼續！
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Teacher & Student Control Settings Grid -->
+    <section class="bg-slate-900 border border-slate-800 rounded-2xl p-4 md:p-6 shadow-lg grid grid-cols-1 md:grid-cols-3 gap-6">
+      
+      <!-- MP3 Audio Upload Control -->
+      <div class="space-y-2">
+        <label class="block text-sm font-bold text-amber-300 flex items-center gap-2">
+          <i class="fa-solid fa-file-audio"></i> 1. 上載背景音樂 (MP3 / 音訊檔)
+        </label>
+        <input type="file" id="audioUploader" accept="audio/*" class="hidden">
+        <label for="audioUploader" class="w-full cursor-pointer bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-600 border-dashed rounded-xl p-3 flex items-center justify-center gap-3 transition">
+          <i class="fa-solid fa-cloud-arrow-up text-amber-400 text-xl"></i>
+          <span id="uploadFileName" class="text-sm truncate">點擊上載 MP3 音樂</span>
+        </label>
+        <p class="text-xs text-slate-400">（若未選擇，系統將使用預設示範音樂）</p>
+      </div>
+
+      <!-- Split Time Control (Seconds of Intersection) -->
+      <div class="space-y-2">
+        <label class="block text-sm font-bold text-amber-300 flex items-center gap-2">
+          <i class="fa-solid fa-scissors"></i> 2. 設定音樂中斷秒數 (秒)
+        </label>
+        <div class="flex items-center gap-3">
+          <input type="number" id="splitSecondInput" min="1" max="60" value="4" class="bg-slate-800 text-amber-300 font-bold text-lg border border-slate-700 rounded-xl px-4 py-2 w-24 text-center focus:outline-none focus:border-amber-400">
+          <span class="text-sm text-slate-300">秒時中斷</span>
+        </div>
+        <p class="text-xs text-slate-400">音樂播放至此秒數將停頓，等待敲鼓續奏</p>
+      </div>
+
+      <!-- Object Size & Audio Beacon Accessibility Settings -->
+      <div class="space-y-2">
+        <label class="block text-sm font-bold text-amber-300 flex items-center gap-2">
+          <i class="fa-solid fa-sliders"></i> 3. 視障輔助與物件大小
+        </label>
+        <div class="space-y-3">
+          <div>
+            <div class="flex justify-between text-xs text-slate-300 mb-1">
+              <span>大鼓尺寸：</span>
+              <span id="sizeValueDisplay" class="font-bold text-amber-400">300 px</span>
+            </div>
+            <input type="range" id="drumSizeSlider" min="180" max="420" value="300" class="w-full accent-amber-500 cursor-pointer">
+          </div>
+          <div class="flex items-center justify-between">
+            <span class="text-xs text-slate-300">距離聲音導引 (聲納提示)</span>
+            <input type="checkbox" id="toggleBeacon" checked class="w-5 h-5 accent-amber-500 cursor-pointer">
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Stage Simulation Canvas Container -->
+    <section id="concertStage" class="relative bg-slate-900 rounded-3xl min-h-[420px] md:min-h-[500px] flex flex-col items-center justify-between p-6 border-4 border-slate-800 stage-glow overflow-hidden">
+      
+      <!-- Concert Background Stage Lights Animation -->
+      <div class="absolute inset-0 opacity-30 pointer-events-none overflow-hidden">
+        <div class="absolute top-0 left-1/4 w-32 h-96 bg-blue-500 blur-3xl transform -rotate-45 animate-pulse"></div>
+        <div class="absolute top-0 right-1/4 w-32 h-96 bg-purple-500 blur-3xl transform rotate-45 animate-pulse"></div>
+        <div class="absolute bottom-0 inset-x-0 h-40 bg-gradient-to-t from-black to-transparent"></div>
+      </div>
+
+      <!-- Status Display Banner -->
+      <div class="z-10 bg-slate-950/80 backdrop-blur-md px-6 py-3 rounded-full border border-amber-500/50 flex items-center gap-4 text-center max-w-xl shadow-2xl">
+        <span id="statusBadge" class="w-4 h-4 rounded-full bg-slate-500 animate-ping"></span>
+        <p id="statusMessage" class="text-base md:text-lg font-bold text-amber-200">
+          準備就緒：請按下下方「開始演唱會音樂」按鈕
+        </p>
+      </div>
+
+      <!-- Main Interactive Drum Target (Visual + Touch/Mouse Hit) -->
+      <div class="my-auto z-10 flex flex-col items-center justify-center relative">
+        <div id="drumContainer" class="relative cursor-none flex items-center justify-center transition-all duration-200 rounded-full border-8 border-amber-500/80 bg-gradient-to-br from-amber-900 via-amber-950 to-slate-950 drum-target-glow group">
+          <!-- Outer Cymbal / Drum Ring -->
+          <div class="absolute inset-2 border-4 border-dashed border-amber-300/40 rounded-full animate-spin" style="animation-duration: 20s;"></div>
+          
+          <!-- Inner Drum Head Graphic -->
+          <div class="w-3/4 h-3/4 rounded-full bg-amber-100 border-4 border-amber-600 flex flex-col items-center justify-center text-slate-900 font-black shadow-inner pointer-events-none select-none text-center p-2">
+            <i class="fa-solid fa-drum text-4xl md:text-6xl text-amber-800 mb-1"></i>
+            <span class="text-lg md:text-2xl font-extrabold tracking-wider text-amber-950">爵士鼓</span>
+            <span class="text-xs text-amber-800 font-bold mt-1">【 用鼓棍觸碰敲擊 】</span>
+          </div>
+
+          <!-- Touch / Hit Ripple Effect Layer -->
+          <div id="hitRipple" class="absolute inset-0 rounded-full bg-amber-400/0 transition-all duration-200 pointer-events-none"></div>
+        </div>
+      </div>
+
+      <!-- Audio Progress Bar & Start Control Button -->
+      <div class="z-10 w-full max-w-2xl flex flex-col items-center gap-3">
+        <div class="w-full bg-slate-800 rounded-full h-4 overflow-hidden border border-slate-700 relative">
+          <div id="audioProgressBar" class="bg-gradient-to-r from-amber-500 to-yellow-300 h-full w-0 transition-all duration-100"></div>
+          <div id="splitMarker" class="absolute top-0 bottom-0 w-1 bg-red-500 z-20" style="left: 0%;"></div>
+        </div>
+        <div class="flex justify-between w-full text-xs font-semibold text-slate-400 px-1">
+          <span id="currentTimeText">00:00</span>
+          <span id="splitTimeText" class="text-red-400 font-bold">停頓點: 4秒</span>
+          <span id="durationText">00:00</span>
+        </div>
+
+        <button id="btnStartGame" class="mt-2 px-8 py-4 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-slate-950 font-black text-xl rounded-2xl shadow-2xl transition transform hover:scale-105 flex items-center gap-3 border-4 border-emerald-300 cursor-none">
+          <i class="fa-solid fa-play text-2xl"></i>
+          <span id="btnStartText">【用鼓棍移到此處開始演唱會】</span>
+        </button>
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- Footer -->
+  <footer class="bg-slate-900 border-t border-slate-800 p-4 text-center text-xs text-slate-400">
+    視障學生聽覺體驗教材 &copy; 2026 | 學習目標：聽覺器官（耳朵）的功能與音樂感知
+  </footer>
+
+  <!-- JavaScript Audio Engine & Gameplay Logic -->
+  <script>
+    // System State Variables
+    let audioCtx = null;
+    let customAudioBuffer = null;
+    let currentSource = null;
+    let isPlaying = false;
+    let currentPart = 1; // Part 1: initial track, Part 2: after drum hit
+    let startTime = 0;
+    let pauseOffset = 0;
+    let splitTimeSec = 4;
+    let drumSize = 300;
+    let timerInterval = null;
+    let proximityBeaconInterval = null;
+    let audioDuration = 12; // default synth beat duration in seconds
+    let initialGreetingSpoken = false;
+
+    // Mouse Pointer Position Tracking for Proximity Audio Beacon & Collision Detection
+    let cursorX = 0;
+    let cursorY = 0;
+
+    // DOM Elements Reference
+    const drumstickCursor = document.getElementById('drumstickCursor');
+    const drumContainer = document.getElementById('drumContainer');
+    const hitRipple = document.getElementById('hitRipple');
+    const drumSizeSlider = document.getElementById('drumSizeSlider');
+    const sizeValueDisplay = document.getElementById('sizeValueDisplay');
+    const splitSecondInput = document.getElementById('splitSecondInput');
+    const audioUploader = document.getElementById('audioUploader');
+    const uploadFileName = document.getElementById('uploadFileName');
+    const btnStartGame = document.getElementById('btnStartGame');
+    const btnStartText = document.getElementById('btnStartText');
+    const statusMessage = document.getElementById('statusMessage');
+    const statusBadge = document.getElementById('statusBadge');
+    const audioProgressBar = document.getElementById('audioProgressBar');
+    const splitMarker = document.getElementById('splitMarker');
+    const currentTimeText = document.getElementById('currentTimeText');
+    const durationText = document.getElementById('durationText');
+    const splitTimeText = document.getElementById('splitTimeText');
+    const btnSpeechObjective = document.getElementById('btnSpeechObjective');
+    const btnToggleContrast = document.getElementById('btnToggleContrast');
+    const toggleBeacon = document.getElementById('toggleBeacon');
+
+    window.addEventListener('mousemove', (e) => {
+      cursorX = e.clientX;
+      cursorY = e.clientY;
+      drumstickCursor.style.left = `${cursorX}px`;
+      drumstickCursor.style.top = `${cursorY}px`;
+      
+      triggerInitialSpeechPrompt();
+      checkStartButtonIntersection();
+    });
+
+    window.addEventListener('touchmove', (e) => {
+      if (e.touches.length > 0) {
+        cursorX = e.touches[0].clientX;
+        cursorY = e.touches[0].clientY;
+        drumstickCursor.style.left = `${cursorX}px`;
+        drumstickCursor.style.top = `${cursorY}px`;
+        
+        triggerInitialSpeechPrompt();
+        checkStartButtonIntersection();
+      }
+    });
+
+    // Automatically introduce objective first
+    function triggerInitialSpeechPrompt() {
+      if (!initialGreetingSpoken) {
+        initialGreetingSpoken = true;
+        speakText("歡迎來到聽覺音樂會！學習目標：耳朵是我們的聽覺器官，能接收聲音，幫助我們聽見家人說話與各種環境聲音。你是樂隊的重要鼓手成員，要在演唱會中進行獨奏 Solo！當音樂停頓時，請用鼓棍觸碰大鼓開啟你的獨奏。請移動鼓棍移到『開始演唱會』按鈕開啟音樂！");
+      }
+    }
+
+    // Detect if cursor intersects with Start Button to automatically launch game without clicking
+    function checkStartButtonIntersection() {
+      if (isPlaying || currentPart === 'waiting_drum_hit') return;
+
+      const rect = btnStartGame.getBoundingClientRect();
+      const isIntersecting = (
+        cursorX >= rect.left &&
+        cursorX <= rect.right &&
+        cursorY >= rect.top &&
+        cursorY <= rect.bottom
+      );
+
+      if (isIntersecting) {
+        btnStartGame.classList.add('scale-110', 'ring-8', 'ring-yellow-300');
+        triggerGameStart();
+      } else {
+        btnStartGame.classList.remove('scale-110', 'ring-8', 'ring-yellow-300');
+      }
+    }
+
+    // Initialize Web Audio Context on Demand
+    function initAudioContext() {
+      if (!audioCtx) {
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        audioCtx = new AudioContext();
+      }
+      if (audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
+    }
+
+    // Speech Synthesis Helper for Spoken Guidance
+    function speakText(text) {
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.lang = 'zh-HK'; // Cantonese / Traditional Chinese
+        utterance.rate = 0.9;
+        window.speechSynthesis.speak(utterance);
+      }
+    }
+
+    function triggerGameStart() {
+      if (isPlaying) return;
+      currentPart = 1;
+      updateSplitMarker();
+      statusBadge.className = "w-4 h-4 rounded-full bg-emerald-500 animate-pulse";
+      statusMessage.textContent = "鼓棍已接觸到開始按鈕！樂隊演奏第一部分音樂中...";
+      speakText("鼓棍已接觸到開始按鈕，樂隊演唱會開始！第一部分音樂播放中...");
+      startAudioPlayback(0);
+    }
+
+    function createDemoConcertBuffer() {
+      initAudioContext();
+      const sampleRate = audioCtx.sampleRate;
+      const totalSec = 14;
+      const buffer = audioCtx.createBuffer(2, sampleRate * totalSec, sampleRate);
+      const left = buffer.getChannelData(0);
+      const right = buffer.getChannelData(1);
+
+      // Synthesize catchy rhythmic beat and synth chord progression
+      for (let i = 0; i < buffer.length; i++) {
+        const t = i / sampleRate;
+        const beat = Math.floor(t * 2); // 120 BPM
+        
+        // Synth melody tone
+        const freq = 220 * Math.pow(2, ((beat % 4) * 2) / 12);
+        const melody = Math.sin(2 * Math.PI * freq * t) * Math.exp(-3 * (t % 0.5));
+        
+        // Rhythm snare/bass pulse
+        const bass = Math.sin(2 * Math.PI * 60 * t) * Math.exp(-8 * (t % 0.5));
+        const noise = (Math.random() * 2 - 1) * Math.exp(-12 * ((t + 0.25) % 0.5));
+
+        const sample = (melody * 0.3) + (bass * 0.4) + (noise * 0.2);
+        left[i] = sample;
+        right[i] = sample;
+      }
+      return buffer;
+    }
+
+    function playDrumHitSound() {
+      initAudioContext();
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(150, audioCtx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(30, audioCtx.currentTime + 0.25);
+
+      gain.gain.setValueAtTime(1.0, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.3);
+
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+
+      osc.start();
+      osc.stop(audioCtx.currentTime + 0.3);
+
+      // Noise layer for snare resonance
+      const bufferSize = audioCtx.sampleRate * 0.2;
+      const noiseBuffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+      const output = noiseBuffer.getChannelData(0);
+      for (let i = 0; i < bufferSize; i++) {
+        output[i] = Math.random() * 2 - 1;
+      }
+      const whiteNoise = audioCtx.createBufferSource();
+      whiteNoise.buffer = noiseBuffer;
+      const noiseGain = audioCtx.createGain();
+      noiseGain.gain.setValueAtTime(0.4, audioCtx.currentTime);
+      noiseGain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.2);
+      whiteNoise.connect(noiseGain);
+      noiseGain.connect(audioCtx.destination);
+      whiteNoise.start();
+    }
+
+    function updateProximityBeacon() {
+      if (!isPlaying || currentPart !== 'waiting_drum_hit' || !toggleBeacon.checked) {
+        return;
+      }
+
+      const rect = drumContainer.getBoundingClientRect();
+      const drumCenterX = rect.left + rect.width / 2;
+      const drumCenterY = rect.top + rect.height / 2;
+
+      const dist = Math.hypot(cursorX - drumCenterX, cursorY - drumCenterY);
+      const maxDist = Math.hypot(window.innerWidth, window.innerHeight);
+      
+      // Proximity score: 1 when directly on drum, 0 when far away
+      const proximity = Math.max(0, 1 - (dist / (maxDist * 0.5)));
+
+      // Trigger high-pitched pulse tone faster as cursor gets closer
+      if (Math.random() < (proximity * 0.7 + 0.1)) {
+        initAudioContext();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        const pitch = 300 + (proximity * 800); // 300Hz to 1100Hz
+
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(pitch, audioCtx.currentTime);
+        gain.gain.setValueAtTime(0.15 * proximity, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.08);
+
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.08);
+      }
+    }
+
+    // Start proximity ticker loop
+    setInterval(updateProximityBeacon, 120);
+
+    function startAudioPlayback(offset = 0) {
+      initAudioContext();
+      if (currentSource) {
+        try { currentSource.stop(); } catch(e){}
+      }
+
+      const buffer = customAudioBuffer || createDemoConcertBuffer();
+      audioDuration = buffer.duration;
+
+      currentSource = audioCtx.createBufferSource();
+      currentSource.buffer = buffer;
+      currentSource.connect(audioCtx.destination);
+
+      startTime = audioCtx.currentTime - offset;
+      currentSource.start(0, offset);
+      isPlaying = true;
+
+      // Update UI elements
+      updateProgressDisplay();
+      if (timerInterval) clearInterval(timerInterval);
+      timerInterval = setInterval(checkAudioProgress, 50);
+    }
+
+    function checkAudioProgress() {
+      if (!isPlaying) return;
+      const elapsed = audioCtx.currentTime - startTime;
+      
+      // Update Progress Bar
+      const percentage = Math.min(100, (elapsed / audioDuration) * 100);
+      audioProgressBar.style.width = `${percentage}%`;
+      currentTimeText.textContent = formatTime(elapsed);
+      durationText.textContent = formatTime(audioDuration);
+
+      // PART 1: Monitor split time intersection
+      if (currentPart === 1 && elapsed >= splitTimeSec) {
+        pausePartOneAndPrompt();
+      }
+
+      // Track completion
+      if (elapsed >= audioDuration) {
+        handlePerformanceComplete();
+      }
+    }
+
+    function pausePartOneAndPrompt() {
+      if (currentSource) {
+        try { currentSource.stop(); } catch(e){}
+      }
+      isPlaying = false;
+      clearInterval(timerInterval);
+      pauseOffset = splitTimeSec;
+      currentPart = 'waiting_drum_hit';
+
+      // Update UI & Spoken Prompt for Band Solo
+      statusBadge.className = "w-4 h-4 rounded-full bg-amber-500 animate-ping";
+      statusMessage.textContent = "音樂停頓了！輪到你獨奏 Solo 囉！請用鼓棍觸碰大鼓開始你的獨奏！";
+      speakText("音樂暫停了！輪到你進行鼓聲獨奏 Solo 囉！請使用鼓棍觸碰大鼓，開啟你的獨奏，讓樂隊音樂繼續！");
+
+      // Highlight Drum
+      drumContainer.classList.add('ring-8', 'ring-yellow-300');
+    }
+
+    function resumePartTwo() {
+      playDrumHitSound();
+
+      // Visual Strike Animation & Feedback
+      drumstickCursor.classList.add('strike');
+      setTimeout(() => drumstickCursor.classList.remove('strike'), 150);
+
+      hitRipple.className = "absolute inset-0 rounded-full bg-amber-400/60 scale-125 transition-all duration-300 pointer-events-none";
+      setTimeout(() => {
+        hitRipple.className = "absolute inset-0 rounded-full bg-amber-400/0 transition-all duration-200 pointer-events-none";
+      }, 300);
+
+      if (currentPart === 'waiting_drum_hit') {
+        currentPart = 2;
+        statusBadge.className = "w-4 h-4 rounded-full bg-emerald-500 animate-pulse";
+        statusMessage.textContent = "獨奏 Solo 成功！演唱會音樂第二部分繼續進行中...";
+        speakText("獨奏成功！鼓聲響起，演唱會第二部分續奏！");
+        
+        drumContainer.classList.remove('ring-8', 'ring-yellow-300');
+        
+        // Resume Part 2 from splitTime
+        setTimeout(() => {
+          startAudioPlayback(splitTimeSec);
+        }, 300);
+      }
+    }
+
+    function handlePerformanceComplete() {
+      isPlaying = false;
+      clearInterval(timerInterval);
+      statusBadge.className = "w-4 h-4 rounded-full bg-blue-500";
+      statusMessage.textContent = "演唱會獨奏與演出順利完成！耳朵幫助我們享受美妙音樂！移到按鈕可再次開始。";
+      btnStartText.textContent = "【用鼓棍移到此處再次開始】";
+      speakText("太棒了！你的獨奏太精彩了，演唱會完美結束！我們耳朵這個聽覺器官，幫助我們聽見美好的音樂聲音！移動鼓棍到按鈕可再次演奏。");
+      currentPart = 1;
+    }
+
+    function formatTime(seconds) {
+      const mins = Math.floor(seconds / 60);
+      const secs = Math.floor(seconds % 60);
+      return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    }
+
+    function updateSplitMarker() {
+      splitTimeSec = parseFloat(splitSecondInput.value) || 4;
+      splitTimeText.textContent = `停頓點: ${splitTimeSec}秒`;
+      const perc = (splitTimeSec / audioDuration) * 100;
+      splitMarker.style.left = `${Math.min(100, perc)}%`;
+    }
+
+    function updateProgressDisplay() {
+      updateSplitMarker();
+    }
+
+    drumContainer.addEventListener('mouseenter', () => {
+      if (currentPart === 'waiting_drum_hit') {
+        resumePartTwo();
+      }
+    });
+
+    drumContainer.addEventListener('click', () => {
+      if (currentPart === 'waiting_drum_hit') {
+        resumePartTwo();
+      } else {
+        playDrumHitSound();
+      }
+    });
+
+    // Start button hover / intersection listener
+    btnStartGame.addEventListener('mouseenter', () => {
+      triggerGameStart();
+    });
+
+    btnStartGame.addEventListener('click', () => {
+      triggerGameStart();
+    });
+
+    // Object Size Slider Handling
+    drumSizeSlider.addEventListener('input', (e) => {
+      drumSize = e.target.value;
+      sizeValueDisplay.textContent = `${drumSize} px`;
+      drumContainer.style.width = `${drumSize}px`;
+      drumContainer.style.height = `${drumSize}px`;
+    });
+
+    // Initialize default drum size
+    drumContainer.style.width = `${drumSize}px`;
+    drumContainer.style.height = `${drumSize}px`;
+
+    // Split Second Input Handling
+    splitSecondInput.addEventListener('change', updateSplitMarker);
+
+    // Audio File Uploader Handling
+    audioUploader.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (file) {
+        uploadFileName.textContent = file.name;
+        initAudioContext();
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          audioCtx.decodeAudioData(event.target.result, (buffer) => {
+            customAudioBuffer = buffer;
+            audioDuration = buffer.duration;
+            durationText.textContent = formatTime(audioDuration);
+            updateSplitMarker();
+            speakText(`成功上載背景音樂文件：${file.name}`);
+          });
+        };
+        reader.readAsReadAsBuffer ? reader.readAsReadAsBuffer(file) : reader.readAsArrayBuffer(file);
+      }
+    });
+
+    // Learning Objective Speech Trigger
+    btnSpeechObjective.addEventListener('click', () => {
+      const objectiveText = document.getElementById('objectiveText').innerText;
+      speakText(`學習目標：${objectiveText}。你是樂隊鼓手成員，需要在演唱會進行獨奏 Solo！當音樂停頓時，用鼓棍觸碰大鼓開始獨奏！`);
+    });
+
+    // High Contrast Theme Toggle
+    btnToggleContrast.addEventListener('click', () => {
+      document.body.classList.toggle('high-contrast-mode');
+      speakText("已切換高對比模式");
+    });
+
+    window.onload = function() {
+      updateSplitMarker();
+      durationText.textContent = formatTime(14);
+    };
+  </script>
+</body>
+</html>
